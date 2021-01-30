@@ -1,0 +1,4 @@
+sources:
+  "1.7.1":
+    url: "https://github.com/pytorch/pytorch/archive/v1.7.1.tar.gz"
+    sha256: "fc8d6aaf0bdedd4221617be8d47ac39af57605bdcc814fabc28739427b55e9c7"
