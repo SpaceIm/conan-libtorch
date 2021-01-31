@@ -122,15 +122,15 @@ class LibtorchConan(ConanFile):
 
     def requirements(self):
         self.requires("eigen/3.3.9")
-        if self.options_with_gflags:
+        if self.options.with_gflags:
             self.requires("gflags/2.2.2")
-        if self.options_with_opencv:
+        if self.options.with_opencv:
             self.requires("opencv/4.5.1")
-        if self.options_with_redis:
+        if self.options.with_redis:
             self.requires("hiredis/1.0.0")
-        if self.options_with_rocksdb:
+        if self.options.with_rocksdb:
             self.requires("rocksdb/6.10.2")
-        if self.options_with_zstd:
+        if self.options.with_zstd:
             self.requires("zstd/1.4.8")
 
     def source(self):
