@@ -2,8 +2,8 @@ from conans import ConanFile, CMake, tools
 import os
 
 
-class PytorchConan(ConanFile):
-    name = "pytorch"
+class LibtorchConan(ConanFile):
+    name = "libtorch"
     description = "Tensors and Dynamic neural networks with strong GPU acceleration."
     license = "BSD-3-Clause"
     topics = ("conan", "pytorch", "machine-learning", "deep-learning", "neural-network", "gpu", "tensor")
@@ -135,7 +135,7 @@ class PytorchConan(ConanFile):
 
     def source(self):
         tools.get(**self.conan_data["sources"][self.version])
-        os.rename(self.name + "-" + self.version, self._source_subfolder)
+        os.rename("pytorch-" + self.version, self._source_subfolder)
 
     def _configure_cmake(self):
         if self._cmake:
