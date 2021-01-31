@@ -146,7 +146,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["BUILD_DOCS"] = False
         self._cmake.definitions["BUILD_CUSTOM_PROTOBUF"] = False
         self._cmake.definitions["BUILD_PYTHON"] = False
-        self._cmake.definitions["BUILD_CAFFE2"] = False
+        self._cmake.definitions["BUILD_CAFFE2"] = True
         self._cmake.definitions["BUILD_CAFFE2_OPS"] = False
         self._cmake.definitions["BUILD_CAFFE2_MOBILE"] = False
         self._cmake.definitions["CAFFE2_LINK_LOCAL_PROTOBUF"] = False
