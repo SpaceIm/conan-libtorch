@@ -1,4 +1,5 @@
 from conans import ConanFile, CMake, tools
+from conans.errors import ConanInvalidConfiguration
 import os
 
 
@@ -6,7 +7,8 @@ class LibtorchConan(ConanFile):
     name = "libtorch"
     description = "Tensors and Dynamic neural networks with strong GPU acceleration."
     license = "BSD-3-Clause"
-    topics = ("conan", "pytorch", "machine-learning", "deep-learning", "neural-network", "gpu", "tensor")
+    topics = ("conan", "libtorch", "pytorch", "machine-learning",
+              "deep-learning", "neural-network", "gpu", "tensor")
     homepage = "https://pytorch.org"
     url = "https://github.com/conan-io/conan-center-index"
 
@@ -14,6 +16,7 @@ class LibtorchConan(ConanFile):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
+        "blas": ["eigen", "atlas", "openblas", "mkl", "veclib", "flame", "generic"], # generic means "whatever blas lib found"
         "with_cuda": [True, False],
         "with_rocm": [True, False],
         "with_cudnn": [True, False],
@@ -58,6 +61,7 @@ class LibtorchConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
+        "blas": "openblas", # should be mkl on non mobile os
         "with_cuda": False,
         "with_rocm": False,
         "with_cudnn": False,
@@ -103,7 +107,7 @@ class LibtorchConan(ConanFile):
     short_paths = True
 
     exports_sources = "CMakeLists.txt"
-    generators = "cmake"
+    generators = "cmake", "cmake_find_package", "cmake_find_package_multi"
     _cmake = None
 
     @property
@@ -113,6 +117,8 @@ class LibtorchConan(ConanFile):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
+        if self.settings.os in ["Android", "iOS"]:
+            self.options.blas = "eigen"
 
     def configure(self):
         if self.options.shared:
@@ -122,6 +128,13 @@ class LibtorchConan(ConanFile):
 
     def requirements(self):
         self.requires("eigen/3.3.9")
+        self.requires("fmt/7.1.3")
+        self.requires("protobuf/3.13.0")
+        self.requires("pybind11/2.6.2")
+        if self.options.blas == "openblas":
+            self.requires("openblas/0.3.13")
+        elif self.options.blas in ["atlas", "mkl", "veclib", "flame"]:
+            raise ConanInvalidConfiguration("{} recipe not yet in CCI".format(self.options.blas))
         if self.options.with_gflags:
             self.requires("gflags/2.2.2")
         if self.options.with_opencv:
@@ -136,6 +149,17 @@ class LibtorchConan(ConanFile):
     def source(self):
         tools.get(**self.conan_data["sources"][self.version])
         os.rename("pytorch-" + self.version, self._source_subfolder)
+
+    def _patch_sources(self):
+        # Inject external fmt
+        tools.replace_in_file(os.path.join(self._source_subfolder, "caffe2", "CMakeLists.txt"),
+                              "fmt::fmt-header-only", "CONAN_PKG::fmt")
+        tools.replace_in_file(os.path.join(self._source_subfolder, "cmake", "Dependencies.cmake"),
+                              "add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)", "")
+        tools.replace_in_file(os.path.join(self._source_subfolder, "cmake", "Dependencies.cmake"),
+                              "set_target_properties(fmt-header-only PROPERTIES INTERFACE_COMPILE_FEATURES \"\")", "")
+        tools.replace_in_file(os.path.join(self._source_subfolder, "torch", "CMakeLists.txt"),
+                              "fmt::fmt-header-only", "CONAN_PKG::fmt")
 
     def _configure_cmake(self):
         if self._cmake:
@@ -212,12 +236,39 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_TBB"] = self.options.with_tbb
         self._cmake.definitions["ONNX_ML"] = self.options.onnx_ml_api
         self._cmake.definitions["HAVE_SOVERSION"] = True
-        self._cmake.definitions["USE_SYSTEM_LIBS"] = True
+
+        # FIXME: unvendor some dependencies if possible
+        self._cmake.definitions["USE_SYSTEM_LIBS"] = False
+        self._cmake.definitions["USE_SYSTEM_CPUINFO"] = False
+        self._cmake.definitions["USE_SYSTEM_SLEEF"] = False
+        self._cmake.definitions["USE_SYSTEM_GLOO"] = False
+        self._cmake.definitions["USE_SYSTEM_FP16"] = False
+        self._cmake.definitions["USE_SYSTEM_PTHREADPOOL"] = False
+        self._cmake.definitions["USE_SYSTEM_PSIMD"] = False
+        self._cmake.definitions["USE_SYSTEM_FXDIV"] = False
+        self._cmake.definitions["USE_SYSTEM_BENCHMARK"] = False
+        self._cmake.definitions["USE_SYSTEM_ONNX"] = False
+        self._cmake.definitions["USE_SYSTEM_XNNPACK"] = False
+
         self._cmake.definitions["BUILDING_WITH_TORCH_LIBS"] = True
+        self._cmake.definitions["BLAS"] = self._blas_cmake_option_value
         self._cmake.configure()
         return self._cmake
 
+    @property
+    def _blas_cmake_option_value(self):
+        return {
+            "eigen": "Eigen",
+            "atlas": "ATLAS",
+            "openblas": "OpenBLAS",
+            "mkl": "MKL",
+            "veclib": "vecLib",
+            "flame": "FLAME",
+            "generic": "Generic"
+        }[str(self.options.blas)]
+
     def build(self):
+        self._patch_sources()
         cmake = self._configure_cmake()
         cmake.build()
 
