@@ -17,7 +17,7 @@ class LibtorchConan(ConanFile):
         "shared": [True, False],
         "fPIC": [True, False],
         "blas": ["eigen", "atlas", "openblas", "mkl", "veclib", "flame", "generic"], # generic means "whatever blas lib found"
-        "aten_threading": ["native", "openmp", "tbb"],
+        "aten_parallel_backend": ["native", "openmp", "tbb"],
         "with_cuda": [True, False],
         "with_cudnn": [True, False],
         "with_nvrtc": [True, False],
@@ -49,6 +49,7 @@ class LibtorchConan(ConanFile):
         "with_zmq": [True, False],
         "with_zstd": [True, False],
         "with_mkldnn": [True, False],
+        "distributed": [True, False],
         "with_mpi": [True, False],
         "with_gloo": [True, False],
         "with_tensorpipe": [True, False],
@@ -57,14 +58,14 @@ class LibtorchConan(ConanFile):
         "shared": False,
         "fPIC": True,
         "blas": "openblas", # should be mkl on non mobile os
-        "aten_threading": "native",
+        "aten_parallel_backend": "native",
         "with_cuda": False,
-        "with_cudnn": False,
+        "with_cudnn": True,
         "with_nvrtc": False,
         "with_tensorrt": False,
         "with_rocm": False,
-        "with_nccl": False,
-        "with_fbgemm": False,
+        "with_nccl": True,
+        "with_fbgemm": True,
         "fakelowp": False,
         "with_ffmpeg": False,
         "with_gflags": False,
@@ -72,26 +73,27 @@ class LibtorchConan(ConanFile):
         "with_lmdb": False,
         "with_metal": True,
         "with_nnapi": False,
-        "with_nnpack": False,
-        "with_numa": False,
+        "with_nnpack": True,
+        "with_numa": True,
         "observers": False,
         "with_opencl": False,
         "with_opencv": False,
         "profiling": False,
-        "with_qnnpack": False,
+        "with_qnnpack": True,
         "with_redis": False,
         "with_rocksdb": False,
         "with_snpe": False,
         "with_vulkan": False,
         "vulkan_shaderc_runtime": False,
         "vulkan_relaxed_precision": False,
-        "with_xnnpack": False,
+        "with_xnnpack": True,
         "with_zmq": False,
         "with_zstd": False,
         "with_mkldnn": False,
-        "with_mpi": False,
-        "with_gloo": False,
-        "with_tensorpipe": False,
+        "distributed": True,
+        "with_mpi": True,
+        "with_gloo": True,
+        "with_tensorpipe": True,
     }
 
     exports_sources = "CMakeLists.txt"
@@ -103,8 +105,13 @@ class LibtorchConan(ConanFile):
         return "source_subfolder"
 
     def config_options(self):
+        # Change default options for several OS
         if self.settings.os in ["Android", "iOS"]:
             self.options.blas = "eigen"
+        if self.settings.os not in ["Linux", "Windows"]:
+            self.options.distributed = False
+
+        # Remove several options not supported for several OS
         if self.settings.os == "Windows":
             del self.options.fPIC
             del self.options.with_tensorpipe
@@ -130,10 +137,18 @@ class LibtorchConan(ConanFile):
             del self.options.vulkan_relaxed_precision
         if not self.options.with_fbgemm:
             del self.options.fakelowp
+        if not self.options.distributed:
+            del self.options.with_mpi
+            del self.options.with_gloo
+            del self.options.with_tensorpipe
+
         if self.options.with_cuda and self.options.with_rocm:
             raise ConanInvalidConfiguration("libtorch doesn't yet support simultaneously building with CUDA and ROCm")
         if self.options.with_ffmpeg and not self.options.with_opencv:
-            raise ConanInvalidConfiguration("libtorch ffmpeg support also requires opencv")
+            raise ConanInvalidConfiguration("libtorch video support with ffmpeg also requires opencv")
+
+        if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
+            self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
 
     def requirements(self):
         self.requires("cpuinfo/cci.20201217")
@@ -143,12 +158,14 @@ class LibtorchConan(ConanFile):
         self.requires("protobuf/3.15.5")
         self.requires("pthreadpool/cci.20210218") # only for qnnpack ?
         self.requires("pybind11/2.6.2")
-        self.requires("sleef/3.5.1") # TODO: add in CCI
+        if self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]:
+            raise ConanInvalidConfiguration("sleef recipe not yet available in CCI")
+            self.requires("sleef/3.5.1") # TODO: add in CCI
         if self.options.blas == "openblas":
             self.requires("openblas/0.3.13")
         elif self.options.blas in ["atlas", "mkl", "veclib", "flame"]:
             raise ConanInvalidConfiguration("{} recipe not yet available in CCI".format(self.options.blas))
-        if self.options.aten_threading == "tbb":
+        if self.options.aten_parallel_backend == "tbb":
             self.requires("tbb/2020.3")
         if self.options.with_cuda:
             self.output.warn("cuda recipe not yet available in CCI, assuming that NVIDIA CUDA SDK is installed on your system")
@@ -203,9 +220,11 @@ class LibtorchConan(ConanFile):
         if self.options.with_mkldnn:
             raise ConanInvalidConfiguration("oneDNN (MKL-DNN) recipe not yet available in CCI")
             self.requires("onednn/2.1.2")
-        if self.options.with_mpi:
+        if self.settings.os == "Windows" and self.options.distributed:
+            self.requires("libuv/1.41.0")
+        if self.options.get_safe("with_mpi"):
             self.requires("openmpi/4.1.0")
-        if self.options.with_gloo:
+        if self.options.get_safe("with_gloo"):
             raise ConanInvalidConfiguration("gloo recipe not yet available in CCI")
         if self.options.get_safe("with_tensorpipe"):
             raise ConanInvalidConfiguration("tensorpipe recipe not yet available in CCI")
@@ -276,7 +295,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_OBSERVERS"] = self.options.observers
         self._cmake.definitions["USE_OPENCL"] = self.options.with_opencl
         self._cmake.definitions["USE_OPENCV"] = self.options.with_opencv
-        self._cmake.definitions["USE_OPENMP"] = self.options.aten_threading == "openmp"
+        self._cmake.definitions["USE_OPENMP"] = self.options.aten_parallel_backend == "openmp"
         self._cmake.definitions["USE_PROF"] = self.options.profiling
         self._cmake.definitions["USE_QNNPACK"] = False                             # QNNPACK is now integrated into libtorch and official repo
         self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.with_qnnpack # is archived, so prefer to use vendored QNNPACK
@@ -294,26 +313,14 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_ZSTD"] = self.options.with_zstd
         self._cmake.definitions["USE_MKLDNN"] = self.options.with_mkldnn
         self._cmake.definitions["USE_MKLDNN_CBLAS"] = False # This option has no logic and is useless in libtorch actually
-        self._cmake.definitions["USE_DISTRIBUTED"] = False
-        self._cmake.definitions["USE_MPI"] = self.options.with_mpi
-        self._cmake.definitions["USE_GLOO"] = self.options.with_gloo
+        self._cmake.definitions["USE_DISTRIBUTED"] = self.options.distributed
+        self._cmake.definitions["USE_MPI"] = self.options.get_safe("with_mpi", False)
+        self._cmake.definitions["USE_GLOO"] = self.options.get_safe("with_gloo", False)
         self._cmake.definitions["USE_TENSORPIPE"] = self.options.get_safe("with_tensorpipe", False)
-        self._cmake.definitions["USE_TBB"] = self.options.aten_threading == "tbb"
+        self._cmake.definitions["USE_TBB"] = self.options.aten_parallel_backend == "tbb"
         self._cmake.definitions["ONNX_ML"] = True
         self._cmake.definitions["HAVE_SOVERSION"] = True
-
-        # FIXME: unvendor some dependencies if possible
-        self._cmake.definitions["USE_SYSTEM_LIBS"] = False
-        self._cmake.definitions["USE_SYSTEM_CPUINFO"] = True
-        self._cmake.definitions["USE_SYSTEM_SLEEF"] = False
-        self._cmake.definitions["USE_SYSTEM_GLOO"] = False
-        self._cmake.definitions["USE_SYSTEM_FP16"] = True
-        self._cmake.definitions["USE_SYSTEM_PTHREADPOOL"] = True
-        self._cmake.definitions["USE_SYSTEM_PSIMD"] = True
-        self._cmake.definitions["USE_SYSTEM_FXDIV"] = True
-        self._cmake.definitions["USE_SYSTEM_BENCHMARK"] = False
-        self._cmake.definitions["USE_SYSTEM_ONNX"] = True
-        self._cmake.definitions["USE_SYSTEM_XNNPACK"] = True
+        self._cmake.definitions["USE_SYSTEM_LIBS"] = True
 
         self._cmake.definitions["BUILDING_WITH_TORCH_LIBS"] = True
         self._cmake.definitions["BLAS"] = self._blas_cmake_option_value
