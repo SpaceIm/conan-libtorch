@@ -169,9 +169,9 @@ class LibtorchConan(ConanFile):
             self.requires("tbb/2020.3")
         if self.options.with_cuda:
             self.output.warn("cuda recipe not yet available in CCI, assuming that NVIDIA CUDA SDK is installed on your system")
-        if self.options.with_cudnn:
+        if self.options.get_safe("with_cudnn"):
             self.output.warn("cudnn recipe not yet available in CCI, assuming that NVIDIA CuDNN is installed on your system")
-        if self.options.with_tensorrt:
+        if self.options.get_safe("with_tensorrt"):
             self.output.warn("tensorrt recipe not yet available in CCI, assuming that NVIDIA TensorRT SDK is installed on your system")
         if self.options.with_rocm:
             raise ConanInvalidConfiguration("rocm recipe not yet available in CCI")
@@ -307,7 +307,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_VULKAN"] = self.options.with_vulkan
         self._cmake.definitions["USE_VULKAN_WRAPPER"] = False
         self._cmake.definitions["USE_VULKAN_SHADERC_RUNTIME"] = self.options.get_safe("vulkan_shaderc_runtime", False)
-        self._cmake.definitions["USE_VULKAN_RELAXED_PRECISION"] = self.options.vulkan_relaxed_precision
+        self._cmake.definitions["USE_VULKAN_RELAXED_PRECISION"] = self.options.get_safe("vulkan_relaxed_precision", False)
         self._cmake.definitions["USE_XNNPACK"] = self.options.with_xnnpack
         self._cmake.definitions["USE_ZMQ"] = self.options.with_zmq
         self._cmake.definitions["USE_ZSTD"] = self.options.with_zstd
