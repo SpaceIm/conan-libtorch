@@ -25,7 +25,7 @@ class LibtorchConan(ConanFile):
         "with_rocm": [True, False],
         "with_nccl": [True, False],
         "with_fbgemm": [True, False],
-        "with_fakelowp": [True, False],
+        "fakelowp": [True, False],
         "with_ffmpeg": [True, False],
         "with_gflags": [True, False],
         "with_leveldb": [True, False],
@@ -39,19 +39,16 @@ class LibtorchConan(ConanFile):
         "with_opencv": [True, False],
         "profiling": [True, False],
         "with_qnnpack": [True, False],
-        "pytorch_qnnpack": [True, False],
         "with_redis": [True, False],
         "with_rocksdb": [True, False],
         "with_snpe": [True, False],
         "with_vulkan": [True, False],
-        "vulkan_wrapper": [True, False],
         "vulkan_shaderc_runtime": [True, False],
         "vulkan_relaxed_precision": [True, False],
         "with_xnnpack": [True, False],
         "with_zmq": [True, False],
         "with_zstd": [True, False],
         "with_mkldnn": [True, False],
-        "mkldnn_cblas": [True, False],
         "with_mpi": [True, False],
         "with_gloo": [True, False],
         "with_tensorpipe": [True, False],
@@ -68,7 +65,7 @@ class LibtorchConan(ConanFile):
         "with_rocm": False,
         "with_nccl": False,
         "with_fbgemm": False,
-        "with_fakelowp": False,
+        "fakelowp": False,
         "with_ffmpeg": False,
         "with_gflags": False,
         "with_leveldb": False,
@@ -82,19 +79,16 @@ class LibtorchConan(ConanFile):
         "with_opencv": False,
         "profiling": False,
         "with_qnnpack": False,
-        "pytorch_qnnpack": False,
         "with_redis": False,
         "with_rocksdb": False,
         "with_snpe": False,
         "with_vulkan": False,
-        "vulkan_wrapper": False,
         "vulkan_shaderc_runtime": False,
         "vulkan_relaxed_precision": False,
         "with_xnnpack": False,
         "with_zmq": False,
         "with_zstd": False,
         "with_mkldnn": False,
-        "mkldnn_cblas": False,
         "with_mpi": False,
         "with_gloo": False,
         "with_tensorpipe": False,
@@ -131,6 +125,15 @@ class LibtorchConan(ConanFile):
             del self.options.with_tensorrt
         if not (self.options.with_cuda or self.options.with_rocm):
             del self.options.with_nccl
+        if not self.options.with_vulkan:
+            del self.options.vulkan_shaderc_runtime
+            del self.options.vulkan_relaxed_precision
+        if not self.options.with_fbgemm:
+            del self.options.fakelowp
+        if self.options.with_cuda and self.options.with_rocm:
+            raise ConanInvalidConfiguration("libtorch doesn't yet support simultaneously building with CUDA and ROCm")
+        if self.options.with_ffmpeg and not self.options.with_opencv:
+            raise ConanInvalidConfiguration("libtorch ffmpeg support also requires opencv")
 
     def requirements(self):
         self.requires("cpuinfo/cci.20201217")
@@ -140,7 +143,7 @@ class LibtorchConan(ConanFile):
         self.requires("protobuf/3.15.5")
         self.requires("pthreadpool/cci.20210218") # only for qnnpack ?
         self.requires("pybind11/2.6.2")
-        # self.requires("sleef/3.5.1")
+        self.requires("sleef/3.5.1") # TODO: add in CCI
         if self.options.blas == "openblas":
             self.requires("openblas/0.3.13")
         elif self.options.blas in ["atlas", "mkl", "veclib", "flame"]:
@@ -153,11 +156,20 @@ class LibtorchConan(ConanFile):
             self.output.warn("cudnn recipe not yet available in CCI, assuming that NVIDIA CuDNN is installed on your system")
         if self.options.with_tensorrt:
             self.output.warn("tensorrt recipe not yet available in CCI, assuming that NVIDIA TensorRT SDK is installed on your system")
+        if self.options.with_rocm:
+            raise ConanInvalidConfiguration("rocm recipe not yet available in CCI")
         if self.options.with_fbgemm:
             raise ConanInvalidConfiguration("fbgemm recipe not yet available in CCI")
             self.requires("fbgemm/cci.20210309")
+        if self.options.with_ffmpeg:
+            raise ConanInvalidConfiguration("ffmpeg recipe not yet available in CCI")
         if self.options.with_gflags:
             self.requires("gflags/2.2.2")
+        if self.options.with_leveldb:
+            self.requires("leveldb/1.22")
+        if self.options.with_lmdb:
+            # should be part of OpenLDAP or packaged separately?
+            raise ConanInvalidConfiguration("lmdb recipe not yet available in CCI")
         if self.options.with_nnpack:
             raise ConanInvalidConfiguration("nnpack recipe not yet available in CCI")
             self.requires("nnpack/xxxxx")
@@ -176,6 +188,11 @@ class LibtorchConan(ConanFile):
             self.requires("hiredis/1.0.0")
         if self.options.with_rocksdb:
             self.requires("rocksdb/6.10.2")
+        if self.options.with_vulkan:
+            self.requires("vulkan-headers/1.2.170.0")
+            self.requires("vulkan-loader/1.2.170.0")
+        if self.options.get_safe("vulkan_shaderc_runtime"):
+            self.requires("shaderc/2019.0")
         if self.options.with_xnnpack:
             raise ConanInvalidConfiguration("xnnpack recipe not yet available in CCI")
             self.requires("xnnpack/cci.20210310")
@@ -183,6 +200,9 @@ class LibtorchConan(ConanFile):
             self.requires("zeromq/4.3.4")
         if self.options.with_zstd:
             self.requires("zstd/1.4.9")
+        if self.options.with_mkldnn:
+            raise ConanInvalidConfiguration("oneDNN (MKL-DNN) recipe not yet available in CCI")
+            self.requires("onednn/2.1.2")
         if self.options.with_mpi:
             self.requires("openmpi/4.1.0")
         if self.options.with_gloo:
@@ -216,10 +236,10 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["BUILD_CUSTOM_PROTOBUF"] = False
         self._cmake.definitions["BUILD_PYTHON"] = False
         self._cmake.definitions["BUILD_CAFFE2"] = True
-        self._cmake.definitions["BUILD_CAFFE2_OPS"] = False
+        self._cmake.definitions["BUILD_CAFFE2_OPS"] = True
         self._cmake.definitions["BUILD_CAFFE2_MOBILE"] = False
         self._cmake.definitions["CAFFE2_LINK_LOCAL_PROTOBUF"] = False
-        self._cmake.definitions["CAFFE2_USE_MSVC_STATIC_RUNTIME"] = False
+        self._cmake.definitions["CAFFE2_USE_MSVC_STATIC_RUNTIME"] = self.settings.compiler.get_safe("runtime") in ["MT", "MTd", "static"]
         self._cmake.definitions["BUILD_TEST"] = False
         self._cmake.definitions["BUILD_STATIC_RUNTIME_BENCHMARK"] = False
         self._cmake.definitions["BUILD_MOBILE_BENCHMARKS"] = False
@@ -237,7 +257,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_CUDNN"] = self.options.get_safe("with_cudnn", False)
         self._cmake.definitions["USE_STATIC_CUDNN"] = False
         self._cmake.definitions["USE_FBGEMM"] = self.options.with_fbgemm
-        self._cmake.definitions["USE_FAKELOWP"] = self.options.with_fakelowp
+        self._cmake.definitions["USE_FAKELOWP"] = self.options.get_safe("fakelowp", False)
         self._cmake.definitions["USE_FFMPEG"] = self.options.with_ffmpeg
         self._cmake.definitions["USE_GFLAGS"] = self.options.with_gflags
         self._cmake.definitions["USE_LEVELDB"] = self.options.with_leveldb
@@ -247,7 +267,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_NATIVE_ARCH"] = False
         self._cmake.definitions["USE_NCCL"] = self.options.get_safe("with_nccl", False)
         self._cmake.definitions["USE_STATIC_NCCL"] = False
-        self._cmake.definitions["USE_SYSTEM_NCCL"] = False
+        self._cmake.definitions["USE_SYSTEM_NCCL"] = False # technically we could create a recipe for nccl with 0 packages (because it requires CUDA at build time)
         self._cmake.definitions["USE_NNAPI"] = self.options.get_safe("with_nnapi", False)
         self._cmake.definitions["USE_NNPACK"] = self.options.with_nnpack
         self._cmake.definitions["USE_NUMA"] = self.options.get_safe("with_numa", False)
@@ -258,22 +278,22 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_OPENCV"] = self.options.with_opencv
         self._cmake.definitions["USE_OPENMP"] = self.options.aten_threading == "openmp"
         self._cmake.definitions["USE_PROF"] = self.options.profiling
-        self._cmake.definitions["USE_QNNPACK"] = self.options.with_qnnpack
-        self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.pytorch_qnnpack
+        self._cmake.definitions["USE_QNNPACK"] = False                             # QNNPACK is now integrated into libtorch and official repo
+        self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.with_qnnpack # is archived, so prefer to use vendored QNNPACK
         self._cmake.definitions["USE_REDIS"] = self.options.with_redis
         self._cmake.definitions["USE_ROCKSDB"] = self.options.with_rocksdb
         self._cmake.definitions["USE_SNPE"] = self.options.get_safe("with_snpe", False)
         self._cmake.definitions["USE_SYSTEM_EIGEN_INSTALL"] = True
         self._cmake.definitions["USE_TENSORRT"] = self.options.get_safe("with_tensorrt", False)
         self._cmake.definitions["USE_VULKAN"] = self.options.with_vulkan
-        self._cmake.definitions["USE_VULKAN_WRAPPER"] = self.options.vulkan_wrapper
-        self._cmake.definitions["USE_VULKAN_SHADERC_RUNTIME"] = self.options.vulkan_shaderc_runtime
+        self._cmake.definitions["USE_VULKAN_WRAPPER"] = False
+        self._cmake.definitions["USE_VULKAN_SHADERC_RUNTIME"] = self.options.get_safe("vulkan_shaderc_runtime", False)
         self._cmake.definitions["USE_VULKAN_RELAXED_PRECISION"] = self.options.vulkan_relaxed_precision
         self._cmake.definitions["USE_XNNPACK"] = self.options.with_xnnpack
         self._cmake.definitions["USE_ZMQ"] = self.options.with_zmq
         self._cmake.definitions["USE_ZSTD"] = self.options.with_zstd
-        self._cmake.definitions["USE_MKLDNN"] = self.options.get_safe("with_mkldnn", False)
-        self._cmake.definitions["USE_MKLDNN_CBLAS"] = self.options.mkldnn_cblas
+        self._cmake.definitions["USE_MKLDNN"] = self.options.with_mkldnn
+        self._cmake.definitions["USE_MKLDNN_CBLAS"] = False # This option has no logic and is useless in libtorch actually
         self._cmake.definitions["USE_DISTRIBUTED"] = False
         self._cmake.definitions["USE_MPI"] = self.options.with_mpi
         self._cmake.definitions["USE_GLOO"] = self.options.with_gloo
@@ -313,6 +333,8 @@ class LibtorchConan(ConanFile):
         }[str(self.options.blas)]
 
     def build(self):
+        if self.options.get_safe("with_snpe"):
+            self.output.warn("with_snpe is enabled. Pay attention that you should have properly set SNPE_LOCATION and SNPE_HEADERS CMake variables")
         self._patch_sources()
         cmake = self._configure_cmake()
         cmake.build()
