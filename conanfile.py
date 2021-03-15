@@ -74,19 +74,19 @@ class LibtorchConan(ConanFile):
         "with_metal": True,
         "with_nnapi": False,
         "with_nnpack": True,
+        "with_qnnpack": True,
+        "with_xnnpack": True,
         "with_numa": True,
         "observers": False,
         "with_opencl": False,
         "with_opencv": False,
         "profiling": False,
-        "with_qnnpack": True,
         "with_redis": False,
         "with_rocksdb": False,
         "with_snpe": False,
         "with_vulkan": False,
         "vulkan_shaderc_runtime": False,
         "vulkan_relaxed_precision": False,
-        "with_xnnpack": True,
         "with_zmq": False,
         "with_zstd": False,
         "with_mkldnn": False,
@@ -156,7 +156,6 @@ class LibtorchConan(ConanFile):
         self.requires("fmt/7.1.3")
         self.requires("onnx/1.8.1")
         self.requires("protobuf/3.15.5")
-        self.requires("pthreadpool/cci.20210218") # only for qnnpack ?
         self.requires("pybind11/2.6.2")
         if self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]:
             raise ConanInvalidConfiguration("sleef recipe not yet available in CCI")
@@ -190,6 +189,15 @@ class LibtorchConan(ConanFile):
         if self.options.with_nnpack:
             raise ConanInvalidConfiguration("nnpack recipe not yet available in CCI")
             self.requires("nnpack/xxxxx")
+        if self.options.with_qnnpack:
+            self.requires("fp16/cci.20200514")
+            self.requires("fxdiv/cci.20200417")
+            self.requires("psimd/cci.20200517")
+        if self.options.with_xnnpack:
+            raise ConanInvalidConfiguration("xnnpack recipe not yet available in CCI")
+            self.requires("xnnpack/cci.20210310")
+        if self.options.with_nnpack or self.options.with_qnnpack or self.options.with_xnnpack:
+            self.requires("pthreadpool/cci.20210218")
         if self.options.get_safe("with_numa"):
             self.requires("libnuma/2.0.14")
         if self.options.with_opencl:
@@ -197,10 +205,6 @@ class LibtorchConan(ConanFile):
             self.requires("opencl-icd-loader/2020.06.16")
         if self.options.with_opencv:
             self.requires("opencv/4.5.1")
-        if self.options.with_qnnpack:
-            self.requires("fp16/cci.20200514")
-            self.requires("fxdiv/cci.20200417")
-            self.requires("psimd/cci.20200517")
         if self.options.with_redis:
             self.requires("hiredis/1.0.0")
         if self.options.with_rocksdb:
@@ -210,9 +214,6 @@ class LibtorchConan(ConanFile):
             self.requires("vulkan-loader/1.2.170.0")
         if self.options.get_safe("vulkan_shaderc_runtime"):
             self.requires("shaderc/2019.0")
-        if self.options.with_xnnpack:
-            raise ConanInvalidConfiguration("xnnpack recipe not yet available in CCI")
-            self.requires("xnnpack/cci.20210310")
         if self.options.with_zmq:
             self.requires("zeromq/4.3.4")
         if self.options.with_zstd:
@@ -352,4 +353,7 @@ class LibtorchConan(ConanFile):
         cmake.install()
 
     def package_info(self):
+        # libs:
+        #   - c10 (dependencies: gflags, glog, linuma TBC - system libs: log on Android, TBC)
+        #   - if CUDA: c10_cuda (dependencies: c10, torch::cudart)
         self.cpp_info.libs = tools.collect_libs(self)
