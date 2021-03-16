@@ -146,6 +146,8 @@ class LibtorchConan(ConanFile):
             raise ConanInvalidConfiguration("libtorch doesn't yet support simultaneously building with CUDA and ROCm")
         if self.options.with_ffmpeg and not self.options.with_opencv:
             raise ConanInvalidConfiguration("libtorch video support with ffmpeg also requires opencv")
+        if self.options.blas == "veclib" and not tools.is_apple_os(self.settings.os):
+            raise ConanInvalidConfiguration("veclib only available on Apple family OS")
 
         if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
             self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
@@ -162,7 +164,7 @@ class LibtorchConan(ConanFile):
             self.requires("sleef/3.5.1") # TODO: add in CCI
         if self.options.blas == "openblas":
             self.requires("openblas/0.3.13")
-        elif self.options.blas in ["atlas", "mkl", "veclib", "flame"]:
+        elif self.options.blas in ["atlas", "mkl", "flame"]:
             raise ConanInvalidConfiguration("{} recipe not yet available in CCI".format(self.options.blas))
         if self.options.aten_parallel_backend == "tbb":
             self.requires("tbb/2020.3")
@@ -220,7 +222,6 @@ class LibtorchConan(ConanFile):
             self.requires("zstd/1.4.9")
         if self.options.with_mkldnn:
             raise ConanInvalidConfiguration("oneDNN (MKL-DNN) recipe not yet available in CCI")
-            self.requires("onednn/2.1.2")
         if self.settings.os == "Windows" and self.options.distributed:
             self.requires("libuv/1.41.0")
         if self.options.get_safe("with_mpi"):
@@ -357,3 +358,5 @@ class LibtorchConan(ConanFile):
         #   - c10 (dependencies: gflags, glog, linuma TBC - system libs: log on Android, TBC)
         #   - if CUDA: c10_cuda (dependencies: c10, torch::cudart)
         self.cpp_info.libs = tools.collect_libs(self)
+        if self.options.blas == "veclib":
+            self.cpp_info.frameworks.append("Accelerate")
