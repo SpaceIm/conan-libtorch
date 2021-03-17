@@ -65,7 +65,7 @@ class LibtorchConan(ConanFile):
         "with_tensorrt": False,
         "with_rocm": False,
         "with_nccl": True,
-        "with_fbgemm": True,
+        "with_fbgemm": False, # TODO: should be True
         "fakelowp": False,
         "with_ffmpeg": False,
         "with_gflags": False,
@@ -73,7 +73,7 @@ class LibtorchConan(ConanFile):
         "with_lmdb": False,
         "with_metal": True,
         "with_nnapi": False,
-        "with_nnpack": True,
+        "with_nnpack": False, # TODO: should be True
         "with_qnnpack": True,
         "with_xnnpack": True,
         "with_numa": True,
@@ -92,8 +92,8 @@ class LibtorchConan(ConanFile):
         "with_mkldnn": False,
         "distributed": True,
         "with_mpi": True,
-        "with_gloo": True,
-        "with_tensorpipe": True,
+        "with_gloo": False, # TODO: should be True
+        "with_tensorpipe": False, # TODO: should be True
     }
 
     exports_sources = "CMakeLists.txt"
@@ -160,8 +160,7 @@ class LibtorchConan(ConanFile):
         self.requires("protobuf/3.15.5")
         self.requires("pybind11/2.6.2")
         if self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]:
-            raise ConanInvalidConfiguration("sleef recipe not yet available in CCI")
-            self.requires("sleef/3.5.1") # TODO: add in CCI
+            self.requires("sleef/3.5.1")
         if self.options.blas == "openblas":
             self.requires("openblas/0.3.13")
         elif self.options.blas in ["atlas", "mkl", "flame"]:
@@ -190,13 +189,11 @@ class LibtorchConan(ConanFile):
             raise ConanInvalidConfiguration("lmdb recipe not yet available in CCI")
         if self.options.with_nnpack:
             raise ConanInvalidConfiguration("nnpack recipe not yet available in CCI")
-            self.requires("nnpack/xxxxx")
         if self.options.with_qnnpack:
             self.requires("fp16/cci.20200514")
             self.requires("fxdiv/cci.20200417")
             self.requires("psimd/cci.20200517")
         if self.options.with_xnnpack:
-            raise ConanInvalidConfiguration("xnnpack recipe not yet available in CCI")
             self.requires("xnnpack/cci.20210310")
         if self.options.with_nnpack or self.options.with_qnnpack or self.options.with_xnnpack:
             self.requires("pthreadpool/cci.20210218")
