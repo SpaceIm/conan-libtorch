@@ -93,7 +93,7 @@ class LibtorchConan(ConanFile):
         "distributed": True,
         "with_mpi": True,
         "with_gloo": False, # TODO: should be True
-        "with_tensorpipe": False, # TODO: should be True
+        "with_tensorpipe": True,
     }
 
     exports_sources = "CMakeLists.txt"
@@ -114,6 +114,8 @@ class LibtorchConan(ConanFile):
         # Remove several options not supported for several OS
         if self.settings.os == "Windows":
             del self.options.fPIC
+            del self.options.with_nnpack
+            del self.options.with_qnnpack
             del self.options.with_tensorpipe
         if self.settings.os != "iOS":
             del self.options.with_metal
@@ -187,15 +189,15 @@ class LibtorchConan(ConanFile):
         if self.options.with_lmdb:
             # should be part of OpenLDAP or packaged separately?
             raise ConanInvalidConfiguration("lmdb recipe not yet available in CCI")
-        if self.options.with_nnpack:
+        if self.options.get_safe("with_nnpack"):
             raise ConanInvalidConfiguration("nnpack recipe not yet available in CCI")
-        if self.options.with_qnnpack:
+        if self.options.get_safe("with_qnnpack"):
             self.requires("fp16/cci.20200514")
             self.requires("fxdiv/cci.20200417")
             self.requires("psimd/cci.20200517")
         if self.options.with_xnnpack:
             self.requires("xnnpack/cci.20210310")
-        if self.options.with_nnpack or self.options.with_qnnpack or self.options.with_xnnpack:
+        if self.options.get_safe("with_nnpack") or self.options.get_safe("with_qnnpack") or self.options.with_xnnpack:
             self.requires("pthreadpool/cci.20210218")
         if self.options.get_safe("with_numa"):
             self.requires("libnuma/2.0.14")
@@ -226,23 +228,11 @@ class LibtorchConan(ConanFile):
         if self.options.get_safe("with_gloo"):
             raise ConanInvalidConfiguration("gloo recipe not yet available in CCI")
         if self.options.get_safe("with_tensorpipe"):
-            raise ConanInvalidConfiguration("tensorpipe recipe not yet available in CCI")
             self.requires("tensorpipe/cci.20210309")
 
     def source(self):
         tools.get(**self.conan_data["sources"][self.version])
         os.rename("pytorch-" + self.version, self._source_subfolder)
-
-    def _patch_sources(self):
-        # Inject external fmt
-        tools.replace_in_file(os.path.join(self._source_subfolder, "caffe2", "CMakeLists.txt"),
-                              "fmt::fmt-header-only", "CONAN_PKG::fmt")
-        tools.replace_in_file(os.path.join(self._source_subfolder, "cmake", "Dependencies.cmake"),
-                              "add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)", "")
-        tools.replace_in_file(os.path.join(self._source_subfolder, "cmake", "Dependencies.cmake"),
-                              "set_target_properties(fmt-header-only PROPERTIES INTERFACE_COMPILE_FEATURES \"\")", "")
-        tools.replace_in_file(os.path.join(self._source_subfolder, "torch", "CMakeLists.txt"),
-                              "fmt::fmt-header-only", "CONAN_PKG::fmt")
 
     def _configure_cmake(self):
         if self._cmake:
@@ -287,7 +277,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_STATIC_NCCL"] = False
         self._cmake.definitions["USE_SYSTEM_NCCL"] = False # technically we could create a recipe for nccl with 0 packages (because it requires CUDA at build time)
         self._cmake.definitions["USE_NNAPI"] = self.options.get_safe("with_nnapi", False)
-        self._cmake.definitions["USE_NNPACK"] = self.options.with_nnpack
+        self._cmake.definitions["USE_NNPACK"] = self.options.get_safe("with_nnpack", False)
         self._cmake.definitions["USE_NUMA"] = self.options.get_safe("with_numa", False)
         self._cmake.definitions["USE_NVRTC"] = self.options.get_safe("with_nvrtc", False)
         self._cmake.definitions["USE_NUMPY"] = False
@@ -296,8 +286,8 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_OPENCV"] = self.options.with_opencv
         self._cmake.definitions["USE_OPENMP"] = self.options.aten_parallel_backend == "openmp"
         self._cmake.definitions["USE_PROF"] = self.options.profiling
-        self._cmake.definitions["USE_QNNPACK"] = False                             # QNNPACK is now integrated into libtorch and official repo
-        self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.with_qnnpack # is archived, so prefer to use vendored QNNPACK
+        self._cmake.definitions["USE_QNNPACK"] = False                                         # QNNPACK is now integrated into libtorch and official repo
+        self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.get_safe("with_qnnpack") # is archived, so prefer to use vendored QNNPACK
         self._cmake.definitions["USE_REDIS"] = self.options.with_redis
         self._cmake.definitions["USE_ROCKSDB"] = self.options.with_rocksdb
         self._cmake.definitions["USE_SNPE"] = self.options.get_safe("with_snpe", False)
@@ -321,6 +311,14 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["HAVE_SOVERSION"] = True
         self._cmake.definitions["USE_SYSTEM_LIBS"] = True
 
+        # Weird variables
+        if self.options.get_safe("with_nnpack") or self.options.get_safe("with_qnnpack") or self.options.with_xnnpack:
+            self._cmake.definitions["CPUINFO_SOURCE_DIR"] = ""
+            self._cmake.definitions["FP16_SOURCE_DIR"] = ""
+            self._cmake.definitions["FXDIV_SOURCE_DIR"] = ""
+            self._cmake.definitions["PSIMD_SOURCE_DIR"] = ""
+            self._cmake.definitions["PTHREADPOOL_SOURCE_DIR"] = ""
+
         self._cmake.definitions["BUILDING_WITH_TORCH_LIBS"] = True
         self._cmake.definitions["BLAS"] = self._blas_cmake_option_value
         self._cmake.configure()
@@ -341,7 +339,6 @@ class LibtorchConan(ConanFile):
     def build(self):
         if self.options.get_safe("with_snpe"):
             self.output.warn("with_snpe is enabled. Pay attention that you should have properly set SNPE_LOCATION and SNPE_HEADERS CMake variables")
-        self._patch_sources()
         cmake = self._configure_cmake()
         cmake.build()
 
