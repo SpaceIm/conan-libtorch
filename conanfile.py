@@ -286,8 +286,8 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_OPENCV"] = self.options.with_opencv
         self._cmake.definitions["USE_OPENMP"] = self.options.aten_parallel_backend == "openmp"
         self._cmake.definitions["USE_PROF"] = self.options.profiling
-        self._cmake.definitions["USE_QNNPACK"] = False                                         # QNNPACK is now integrated into libtorch and official repo
-        self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.get_safe("with_qnnpack") # is archived, so prefer to use vendored QNNPACK
+        self._cmake.definitions["USE_QNNPACK"] = False                                                # QNNPACK is now integrated into libtorch and official repo
+        self._cmake.definitions["USE_PYTORCH_QNNPACK"] = self.options.get_safe("with_qnnpack", False) # is archived, so prefer to use vendored QNNPACK
         self._cmake.definitions["USE_REDIS"] = self.options.with_redis
         self._cmake.definitions["USE_ROCKSDB"] = self.options.with_rocksdb
         self._cmake.definitions["USE_SNPE"] = self.options.get_safe("with_snpe", False)
@@ -311,8 +311,9 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["HAVE_SOVERSION"] = True
         self._cmake.definitions["USE_SYSTEM_LIBS"] = True
 
-        # Weird variables
-        if self.options.get_safe("with_nnpack") or self.options.get_safe("with_qnnpack") or self.options.with_xnnpack:
+        # Variables we want to define to NOT build vendored direct and transitive dependencies
+        # maybe not necessary actually
+        if self._use_nnpack_family:
             self._cmake.definitions["CPUINFO_SOURCE_DIR"] = ""
             self._cmake.definitions["FP16_SOURCE_DIR"] = ""
             self._cmake.definitions["FXDIV_SOURCE_DIR"] = ""
@@ -321,6 +322,16 @@ class LibtorchConan(ConanFile):
 
         self._cmake.definitions["BUILDING_WITH_TORCH_LIBS"] = True
         self._cmake.definitions["BLAS"] = self._blas_cmake_option_value
+
+        self._cmake.definitions["MSVC_Z7_OVERRIDE"] = False
+
+        # Custom variables for our CMake wrapper
+        self._cmake.definitions["CONAN_LIBTORCH_USE_PTHREADPOOL"] = self._use_nnpack_family
+        self._cmake.definitions["CONAN_LIBTORCH_USE_CPUINFO"] = True
+        self._cmake.definitions["CONAN_LIBTORCH_USE_FXDIV"] = self.options.with_xnnpack
+        self._cmake.definitions["CONAN_LIBTORCH_USE_PSIMD"] = self.options.with_xnnpack
+        self._cmake.definitions["CONAN_LIBTORCH_USE_FP16"] = self.options.with_xnnpack
+
         self._cmake.configure()
         return self._cmake
 
@@ -335,6 +346,10 @@ class LibtorchConan(ConanFile):
             "flame": "FLAME",
             "generic": "Generic"
         }[str(self.options.blas)]
+
+    @property
+    def _use_nnpack_family(self):
+        return self.options.get_safe("with_nnpack") or self.options.get_safe("with_qnnpack") or self.options.with_xnnpack
 
     def build(self):
         if self.options.get_safe("with_snpe"):
@@ -351,6 +366,7 @@ class LibtorchConan(ConanFile):
         # libs:
         #   - c10 (dependencies: gflags, glog, linuma TBC - system libs: log on Android, TBC)
         #   - if CUDA: c10_cuda (dependencies: c10, torch::cudart)
+        #   - if qnnpack: pytorch_qnnpack
         self.cpp_info.libs = tools.collect_libs(self)
         if self.options.blas == "veclib":
             self.cpp_info.frameworks.append("Accelerate")
