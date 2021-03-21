@@ -4,6 +4,10 @@ project(cmake_wrapper)
 include(conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
+find_package(Eigen3 REQUIRED)
+set(EIGEN3_FOUND 1)
+set(EIGEN3_INCLUDE_DIR ${Eigen3_INCLUDE_DIR})
+
 if(CONAN_LIBTORCH_USE_PTHREADPOOL)
     add_library(pthreadpool INTERFACE IMPORTED)
     set_property(TARGET pthreadpool PROPERTY INTERFACE_LINK_LIBRARIES CONAN_PKG::pthreadpool)

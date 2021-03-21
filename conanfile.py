@@ -96,7 +96,7 @@ class LibtorchConan(ConanFile):
         "with_tensorpipe": True,
     }
 
-    exports_sources = "CMakeLists.txt"
+    exports_sources = ["CMakeLists.txt", "patches/**"]
     generators = "cmake", "cmake_find_package", "cmake_find_package_multi"
     _cmake = None
 
@@ -116,6 +116,7 @@ class LibtorchConan(ConanFile):
             del self.options.fPIC
             del self.options.with_nnpack
             del self.options.with_qnnpack
+            del self.options.with_mpi
             del self.options.with_tensorpipe
         if self.settings.os != "iOS":
             del self.options.with_metal
@@ -354,6 +355,10 @@ class LibtorchConan(ConanFile):
     def build(self):
         if self.options.get_safe("with_snpe"):
             self.output.warn("with_snpe is enabled. Pay attention that you should have properly set SNPE_LOCATION and SNPE_HEADERS CMake variables")
+        for patch in self.conan_data.get("patches", {}).get(self.version, []):
+            tools.patch(**patch)
+        # conflict with macros.h generated at build time
+        os.remove(os.path.join(self.build_folder, self._source_subfolder, "caffe2", "core", "macros.h"))
         cmake = self._configure_cmake()
         cmake.build()
 

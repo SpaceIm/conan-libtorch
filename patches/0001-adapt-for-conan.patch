@@ -1,0 +1,265 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 24d3c9b3a4..f35d12d2b1 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -272,6 +272,7 @@ if(WIN32)
+   set(USE_TENSORPIPE OFF)
+   message(WARNING "TensorPipe cannot be used on Windows. Set it to OFF")
+ 
++  # What do do here?
+   if(USE_DISTRIBUTED AND NOT DEFINED ENV{libuv_ROOT})
+     find_library(
+       libuv_tmp_LIBRARY
+@@ -617,7 +618,6 @@ endif()
+ set(CMAKE_C_STANDARD 11)
+ set(CMAKE_CXX_STANDARD 14)
+ if(NOT MSVC)
+-  string(APPEND CMAKE_CXX_FLAGS " -O2 -fPIC")
+   string(APPEND CMAKE_CXX_FLAGS " -Wno-narrowing")
+   # Eigen fails to build with some versions, so convert this to a warning
+   # Details at http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1459
+diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
+index 7bef849c08..874ebb6c89 100644
+--- a/caffe2/CMakeLists.txt
++++ b/caffe2/CMakeLists.txt
+@@ -60,7 +60,7 @@ if(INTERN_BUILD_ATEN_OPS)
+   "${PYTHON_EXECUTABLE}" ${CMAKE_CURRENT_SOURCE_DIR}/contrib/aten/gen_op.py
+     --aten_root=${CMAKE_CURRENT_SOURCE_DIR}/../aten
+     --template_dir=${CMAKE_CURRENT_SOURCE_DIR}/contrib/aten
+-    --yaml_dir=${CMAKE_CURRENT_BINARY_DIR}/../aten/src/ATen
++    --yaml_dir=${CMAKE_BINARY_DIR}/aten/src/ATen
+     --install_dir=${CMAKE_CURRENT_BINARY_DIR}/contrib/aten
+   DEPENDS
+   ATEN_CPU_FILES_GEN_TARGET
+@@ -98,7 +98,7 @@ endif()
+ # Note: the folders that are being commented out have not been properly
+ # addressed yet.
+ 
+-if(NOT MSVC AND USE_XNNPACK)
++if(0)
+   if(NOT TARGET fxdiv)
+     set(FXDIV_BUILD_TESTS OFF CACHE BOOL "")
+     set(FXDIV_BUILD_BENCHMARKS OFF CACHE BOOL "")
+@@ -348,7 +348,7 @@ if(NOT INTERN_BUILD_MOBILE OR NOT BUILD_CAFFE2_MOBILE)
+     # up being empty. Downstream targets should also add a #ifdef guard.
+     if(NOT WIN32)
+       add_library(process_group_agent "${TORCH_SRC_DIR}/csrc/distributed/rpc/process_group_agent.cpp" "${TORCH_SRC_DIR}/csrc/distributed/rpc/process_group_agent.h")
+-      target_link_libraries(process_group_agent PRIVATE torch c10d fmt::fmt-header-only)
++      target_link_libraries(process_group_agent PRIVATE torch c10d CONAN_PKG::fmt)
+       add_dependencies(process_group_agent torch c10d)
+ 
+       add_library(tensorpipe_agent
+@@ -358,7 +358,7 @@ if(NOT INTERN_BUILD_MOBILE OR NOT BUILD_CAFFE2_MOBILE)
+         "${TORCH_SRC_DIR}/csrc/distributed/rpc/tensorpipe_utils.cpp"
+         "${TORCH_SRC_DIR}/csrc/distributed/rpc/tensorpipe_utils.h"
+         )
+-      target_link_libraries(tensorpipe_agent PRIVATE torch c10d tensorpipe fmt::fmt-header-only)
++      target_link_libraries(tensorpipe_agent PRIVATE torch c10d CONAN_PKG::fmt)
+       add_dependencies(tensorpipe_agent torch c10d)
+       if(USE_TENSORPIPE)
+         if(USE_CUDA)
+@@ -373,8 +373,7 @@ if(NOT INTERN_BUILD_MOBILE OR NOT BUILD_CAFFE2_MOBILE)
+         endif()
+ 
+         target_compile_definitions(tensorpipe_agent PUBLIC USE_TENSORPIPE)
+-        target_link_libraries(tensorpipe_agent PRIVATE tensorpipe)
+-        add_dependencies(tensorpipe_agent tensorpipe)
++        target_link_libraries(tensorpipe_agent PRIVATE CONAN_PKG::tensorpipe)
+       endif()
+     endif()
+   endif()
+@@ -856,7 +855,6 @@ if(USE_CUDA OR USE_ROCM)
+ endif()
+ 
+ if(NOT MSVC AND USE_XNNPACK)
+-  TARGET_LINK_LIBRARIES(torch_cpu PRIVATE fxdiv)
+ endif()
+ 
+ # ==========================================================
+diff --git a/caffe2/onnx/onnxifi_graph_info.h b/caffe2/onnx/onnxifi_graph_info.h
+index 06c1ce4b68..67fe01d57a 100644
+--- a/caffe2/onnx/onnxifi_graph_info.h
++++ b/caffe2/onnx/onnxifi_graph_info.h
+@@ -7,7 +7,7 @@
+ 
+ #include "caffe2/core/logging.h"
+ #include "caffe2/opt/shape_info.h"
+-#include "foxi/onnxifi_loader.h"
++#include "onnx/onnxifi_loader.h"
+ 
+ namespace caffe2 {
+ namespace onnx {
+diff --git a/caffe2/onnx/onnxifi_init.h b/caffe2/onnx/onnxifi_init.h
+index 26ae9145ad..02fbe940b5 100644
+--- a/caffe2/onnx/onnxifi_init.h
++++ b/caffe2/onnx/onnxifi_init.h
+@@ -1,6 +1,6 @@
+ #pragma once
+ 
+-#include "foxi/onnxifi_loader.h"
++#include "onnx/onnxifi_loader.h"
+ 
+ namespace caffe2 {
+ namespace onnx {
+diff --git a/cmake/Codegen.cmake b/cmake/Codegen.cmake
+index a9d2e4f50e..a8bd3a2a94 100644
+--- a/cmake/Codegen.cmake
++++ b/cmake/Codegen.cmake
+@@ -233,7 +233,7 @@ if(INTERN_BUILD_ATEN_OPS)
+ endif()
+ 
+ function(append_filelist name outputvar)
+-  set(_rootdir "${${CMAKE_PROJECT_NAME}_SOURCE_DIR}/")
++  set(_rootdir "${Torch_SOURCE_DIR}/")
+   # configure_file adds its input to the list of CMAKE_RERUN dependencies
+   configure_file(
+       ${PROJECT_SOURCE_DIR}/tools/build_variables.bzl
+diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
+index 06464e799a..6535160188 100644
+--- a/cmake/Dependencies.cmake
++++ b/cmake/Dependencies.cmake
+@@ -82,7 +82,7 @@ else()
+       "Cannot find threading library. Caffe2 requires Threads to compile.")
+ endif()
+ 
+-if(USE_TBB)
++if(0)
+   message(STATUS "Compiling TBB from source")
+   # Unset our restrictive C++ flags here and reset them later.
+   # Remove this once we use proper target_compile_options.
+@@ -131,8 +131,7 @@ elseif(BLAS STREQUAL "ATLAS")
+   list(APPEND Caffe2_PUBLIC_DEPENDENCY_LIBS cblas)
+ elseif(BLAS STREQUAL "OpenBLAS")
+   find_package(OpenBLAS REQUIRED)
+-  include_directories(SYSTEM ${OpenBLAS_INCLUDE_DIR})
+-  list(APPEND Caffe2_PUBLIC_DEPENDENCY_LIBS ${OpenBLAS_LIB})
++  list(APPEND Caffe2_PUBLIC_DEPENDENCY_LIBS OpenBLAS::OpenBLAS)
+ elseif(BLAS STREQUAL "MKL")
+   if(BLAS_SET_BY_USER)
+     find_package(MKL REQUIRED)
+@@ -465,7 +464,6 @@ if(USE_PYTORCH_QNNPACK)
+       # We build static versions of QNNPACK and pthreadpool but link
+       # them into a shared library for Caffe2, so they need PIC.
+       set_property(TARGET pytorch_qnnpack PROPERTY POSITION_INDEPENDENT_CODE ON)
+-      set_property(TARGET cpuinfo PROPERTY POSITION_INDEPENDENT_CODE ON)
+ 
+       if(PYTORCH_QNNPACK_CUSTOM_THREADPOOL)
+         target_compile_definitions(
+@@ -495,7 +493,6 @@ endif()
+ 
+ # ---[ NNPACK
+ if(USE_NNPACK)
+-  include(${CMAKE_CURRENT_LIST_DIR}/External/nnpack.cmake)
+   if(NNPACK_FOUND)
+     if(TARGET nnpack)
+       # ---[ NNPACK is being built together with Caffe2: explicitly specify dependency
+@@ -542,13 +539,8 @@ if(USE_XNNPACK AND NOT USE_SYSTEM_XNNPACK)
+   include_directories(SYSTEM ${XNNPACK_INCLUDE_DIR})
+   list(APPEND Caffe2_DEPENDENCY_LIBS XNNPACK)
+ elseif(NOT TARGET XNNPACK AND USE_SYSTEM_XNNPACK)
+-  add_library(XNNPACK SHARED IMPORTED)
+-  find_library(XNNPACK_LIBRARY XNNPACK)
+-  set_property(TARGET XNNPACK PROPERTY IMPORTED_LOCATION "${XNNPACK_LIBRARY}")
+-  if(NOT XNNPACK_LIBRARY)
+-    message(FATAL_ERROR "Cannot find XNNPACK")
+-  endif()
+-  message("-- Found XNNPACK: ${XNNPACK_LIBRARY}")
++  add_library(XNNPACK INTERFACE IMPORTED)
++  set_property(TARGET XNNPACK PROPERTY INTERFACE_LINK_LIBRARIES CONAN_PKG::xnnpack)
+   list(APPEND Caffe2_DEPENDENCY_LIBS XNNPACK)
+ endif()
+ 
+@@ -1349,9 +1341,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
+     set(TP_BUILD_LIBUV ON CACHE BOOL "" FORCE)
+     set(TP_STATIC_OR_SHARED STATIC CACHE STRING "" FORCE)
+ 
+-    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/tensorpipe)
+ 
+-    list(APPEND Caffe2_DEPENDENCY_LIBS tensorpipe)
++    list(APPEND Caffe2_DEPENDENCY_LIBS CONAN_PKG::tensorpipe)
+   endif()
+ endif()
+ 
+@@ -1425,13 +1416,12 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+   if(ONNX_ML)
+     add_definitions(-DONNX_ML=1)
+   endif()
+-  add_definitions(-DONNXIFI_ENABLE_EXT=1)
++  # Disable ONNXIFI_ENABLE_EXT for the moment
+   # Add op schemas in "ai.onnx.pytorch" domain
+   add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../caffe2/onnx/torch_ops")
+   if(NOT USE_SYSTEM_ONNX)
+     add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/onnx EXCLUDE_FROM_ALL)
+   endif()
+-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/foxi EXCLUDE_FROM_ALL)
+ 
+   add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
+   if(NOT USE_SYSTEM_ONNX)
+@@ -1445,23 +1435,9 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+     endif()
+     list(APPEND Caffe2_DEPENDENCY_WHOLE_LINK_LIBS onnx_library)
+   else()
+-    add_library(onnx SHARED IMPORTED)
+-    find_library(ONNX_LIBRARY onnx)
+-    if(NOT ONNX_LIBRARY)
+-      message(FATAL_ERROR "Cannot find onnx")
+-    endif()
+-    set_property(TARGET onnx PROPERTY IMPORTED_LOCATION ${ONNX_LIBRARY})
+-    add_library(onnx_proto SHARED IMPORTED)
+-    find_library(ONNX_PROTO_LIBRARY onnx_proto)
+-    if(NOT ONNX_PROTO_LIBRARY)
+-      message(FATAL_ERROR "Cannot find onnx")
+-    endif()
+-    set_property(TARGET onnx_proto PROPERTY IMPORTED_LOCATION ${ONNX_PROTO_LIBRARY})
+-    message("-- Found onnx: ${ONNX_LIBRARY} ${ONNX_PROTO_LIBRARY}")
++    find_package(ONNX REQUIRED CONFIG)
+     list(APPEND Caffe2_DEPENDENCY_LIBS onnx_proto onnx)
+   endif()
+-  include_directories(${FOXI_INCLUDE_DIRS})
+-  list(APPEND Caffe2_DEPENDENCY_LIBS foxi_loader)
+   # Recover the build shared libs option.
+   set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
+ endif()
+@@ -1776,7 +1752,6 @@ endif()
+ #
+ set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
+-add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+ 
+ # Disable compiler feature checks for `fmt`.
+ #
+@@ -1785,9 +1760,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+ # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
+ # `fmt` is compatible with a superset of the compilers that PyTorch is, it
+ # shouldn't be too bad to just disable the checks.
+-set_target_properties(fmt-header-only PROPERTIES INTERFACE_COMPILE_FEATURES "")
+ 
+-list(APPEND Caffe2_DEPENDENCY_LIBS fmt::fmt-header-only)
++list(APPEND Caffe2_DEPENDENCY_LIBS CONAN_PKG::fmt)
+ set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS} CACHE BOOL "Build shared libs" FORCE)
+ 
+ # ---[ Kineto
+diff --git a/tools/codegen/dest/register_dispatch_key.py b/tools/codegen/dest/register_dispatch_key.py
+index 6ab7f58843..87e762116b 100644
+--- a/tools/codegen/dest/register_dispatch_key.py
++++ b/tools/codegen/dest/register_dispatch_key.py
+@@ -1,6 +1,6 @@
+ from typing import List, Optional, Union
+ import itertools
+-from typing_extensions import Literal
++from typing import Literal
+ from dataclasses import dataclass
+ 
+ from tools.codegen.context import *
+diff --git a/tools/codegen/gen.py b/tools/codegen/gen.py
+index 4b8e59d2b2..ab4c17a461 100644
+--- a/tools/codegen/gen.py
++++ b/tools/codegen/gen.py
+@@ -1,6 +1,6 @@
+ import os
+ from typing import List, Dict, Optional, Tuple, Set, Callable, Any, Union, Sequence
+-from typing_extensions import Literal
++from typing import Literal
+ import yaml
+ from collections import OrderedDict, defaultdict
+ import argparse
