@@ -104,6 +104,10 @@ class LibtorchConan(ConanFile):
     def _source_subfolder(self):
         return "source_subfolder"
 
+    @property
+    def _build_subfolder(self):
+        return "build_subfolder"
+
     def config_options(self):
         # Change default options for several OS
         if self.settings.os in ["Android", "iOS"]:
@@ -159,6 +163,7 @@ class LibtorchConan(ConanFile):
         self.requires("cpuinfo/cci.20201217")
         self.requires("eigen/3.3.9")
         self.requires("fmt/7.1.3")
+        self.requires("foxi/cci.20210217")
         self.requires("onnx/1.8.1")
         self.requires("protobuf/3.15.5")
         self.requires("pybind11/2.6.2")
@@ -333,7 +338,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["CONAN_LIBTORCH_USE_PSIMD"] = self.options.with_xnnpack
         self._cmake.definitions["CONAN_LIBTORCH_USE_FP16"] = self.options.with_xnnpack
 
-        self._cmake.configure()
+        self._cmake.configure(build_folder=self._build_subfolder)
         return self._cmake
 
     @property

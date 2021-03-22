@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 24d3c9b3a4..f35d12d2b1 100644
+index 24d3c9b3a4..d63bd34d22 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -272,6 +272,7 @@ if(WIN32)
@@ -18,6 +18,15 @@ index 24d3c9b3a4..f35d12d2b1 100644
    string(APPEND CMAKE_CXX_FLAGS " -Wno-narrowing")
    # Eigen fails to build with some versions, so convert this to a warning
    # Details at http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1459
+@@ -792,7 +792,7 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR})
+ include_directories(BEFORE ${PROJECT_BINARY_DIR})
+ 
+ include_directories(BEFORE ${PROJECT_SOURCE_DIR}/aten/src/)
+-include_directories(BEFORE ${PROJECT_BINARY_DIR}/aten/src/)
++include_directories(BEFORE ${CMAKE_BINARY_DIR}/aten/src/)
+ 
+ # ---[ Main build
+ add_subdirectory(c10)
 diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
 index 7bef849c08..874ebb6c89 100644
 --- a/caffe2/CMakeLists.txt
@@ -76,31 +85,6 @@ index 7bef849c08..874ebb6c89 100644
  endif()
  
  # ==========================================================
-diff --git a/caffe2/onnx/onnxifi_graph_info.h b/caffe2/onnx/onnxifi_graph_info.h
-index 06c1ce4b68..67fe01d57a 100644
---- a/caffe2/onnx/onnxifi_graph_info.h
-+++ b/caffe2/onnx/onnxifi_graph_info.h
-@@ -7,7 +7,7 @@
- 
- #include "caffe2/core/logging.h"
- #include "caffe2/opt/shape_info.h"
--#include "foxi/onnxifi_loader.h"
-+#include "onnx/onnxifi_loader.h"
- 
- namespace caffe2 {
- namespace onnx {
-diff --git a/caffe2/onnx/onnxifi_init.h b/caffe2/onnx/onnxifi_init.h
-index 26ae9145ad..02fbe940b5 100644
---- a/caffe2/onnx/onnxifi_init.h
-+++ b/caffe2/onnx/onnxifi_init.h
-@@ -1,6 +1,6 @@
- #pragma once
- 
--#include "foxi/onnxifi_loader.h"
-+#include "onnx/onnxifi_loader.h"
- 
- namespace caffe2 {
- namespace onnx {
 diff --git a/cmake/Codegen.cmake b/cmake/Codegen.cmake
 index a9d2e4f50e..a8bd3a2a94 100644
 --- a/cmake/Codegen.cmake
@@ -115,7 +99,7 @@ index a9d2e4f50e..a8bd3a2a94 100644
    configure_file(
        ${PROJECT_SOURCE_DIR}/tools/build_variables.bzl
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index 06464e799a..6535160188 100644
+index 06464e799a..a621b7a97d 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
 @@ -82,7 +82,7 @@ else()
@@ -180,14 +164,7 @@ index 06464e799a..6535160188 100644
    endif()
  endif()
  
-@@ -1425,13 +1416,12 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
-   if(ONNX_ML)
-     add_definitions(-DONNX_ML=1)
-   endif()
--  add_definitions(-DONNXIFI_ENABLE_EXT=1)
-+  # Disable ONNXIFI_ENABLE_EXT for the moment
-   # Add op schemas in "ai.onnx.pytorch" domain
-   add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../caffe2/onnx/torch_ops")
+@@ -1431,7 +1422,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
    if(NOT USE_SYSTEM_ONNX)
      add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/onnx EXCLUDE_FROM_ALL)
    endif()
@@ -195,7 +172,7 @@ index 06464e799a..6535160188 100644
  
    add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
    if(NOT USE_SYSTEM_ONNX)
-@@ -1445,23 +1435,9 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1445,23 +1435,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
      endif()
      list(APPEND Caffe2_DEPENDENCY_WHOLE_LINK_LIBS onnx_library)
    else()
@@ -215,12 +192,13 @@ index 06464e799a..6535160188 100644
 +    find_package(ONNX REQUIRED CONFIG)
      list(APPEND Caffe2_DEPENDENCY_LIBS onnx_proto onnx)
    endif()
--  include_directories(${FOXI_INCLUDE_DIRS})
+   include_directories(${FOXI_INCLUDE_DIRS})
 -  list(APPEND Caffe2_DEPENDENCY_LIBS foxi_loader)
++  list(APPEND Caffe2_DEPENDENCY_LIBS CONAN_PKG::foxi)
    # Recover the build shared libs option.
    set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
  endif()
-@@ -1776,7 +1752,6 @@ endif()
+@@ -1776,7 +1754,6 @@ endif()
  #
  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
@@ -228,7 +206,7 @@ index 06464e799a..6535160188 100644
  
  # Disable compiler feature checks for `fmt`.
  #
-@@ -1785,9 +1760,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+@@ -1785,9 +1762,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
  # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
  # `fmt` is compatible with a superset of the compilers that PyTorch is, it
  # shouldn't be too bad to just disable the checks.
