@@ -1,6 +1,9 @@
 from conans import ConanFile, CMake, tools
 from conans.errors import ConanInvalidConfiguration
 import os
+import textwrap
+
+required_conan_version = ">=1.33.0"
 
 
 class LibtorchConan(ConanFile):
@@ -317,15 +320,6 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["HAVE_SOVERSION"] = True
         self._cmake.definitions["USE_SYSTEM_LIBS"] = True
 
-        # Variables we want to define to NOT build vendored direct and transitive dependencies
-        # maybe not necessary actually
-        if self._use_nnpack_family:
-            self._cmake.definitions["CPUINFO_SOURCE_DIR"] = ""
-            self._cmake.definitions["FP16_SOURCE_DIR"] = ""
-            self._cmake.definitions["FXDIV_SOURCE_DIR"] = ""
-            self._cmake.definitions["PSIMD_SOURCE_DIR"] = ""
-            self._cmake.definitions["PTHREADPOOL_SOURCE_DIR"] = ""
-
         self._cmake.definitions["BUILDING_WITH_TORCH_LIBS"] = True
         self._cmake.definitions["BLAS"] = self._blas_cmake_option_value
 
@@ -371,12 +365,72 @@ class LibtorchConan(ConanFile):
         self.copy("LICENSE", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
         cmake.install()
+        # TODO: Keep share/Aten/Declarations.yml?
+        # tools.rmdir(os.path.join(self._source_subfolder, "shared"))
+        self._create_cmake_module_variables(
+            os.path.join(self.package_folder, self._module_subfolder, self._module_file)
+        )
+
+    @staticmethod
+    def _create_cmake_module_variables(module_file):
+        content = textwrap.dedent("""\
+            if(DEFINED Torch_FOUND)
+                set(TORCH_FOUND ${Torch_FOUND})
+            endif()
+            if(DEFINED Torch_INCLUDE_DIR)
+                set(TORCH_INCLUDE_DIRS ${Torch_INCLUDE_DIRS})
+            endif()
+            if(DEFINED Torch_LIBRARIES)
+                set(TORCH_LIBRARIES ${Torch_LIBRARIES})
+            endif()
+        """)
+        tools.save(module_file, content)
+
+    @property
+    def _module_subfolder(self):
+        return os.path.join("lib", "cmake")
+
+    @property
+    def _module_file(self):
+        return "conan-official-{}-variables.cmake".format(self.name)
 
     def package_info(self):
-        # libs:
-        #   - c10 (dependencies: gflags, glog, linuma TBC - system libs: log on Android, TBC)
-        #   - if CUDA: c10_cuda (dependencies: c10, torch::cudart)
-        #   - if qnnpack: pytorch_qnnpack
-        self.cpp_info.libs = tools.collect_libs(self)
+        self.cpp_info.names["cmake_find_package"] = "Torch"
+        self.cpp_info.names["cmake_find_package_multi"] = "Torch"
+        self.cpp_info.builddirs.append(self._module_subfolder)
+        self.cpp_info.build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
+        self.cpp_info.build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
+        self.cpp_info.includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
+        # FIXME:
+        #  - properly define order of libs
+        #  - torch, torch_cpu, torch_cuda and c10_cuda libs should be linked with
+        #        * if clang: -Wl,-force_load,<lib>
+        #        * if msvc : -WHOLEARCHIVE:<lib>
+        #        * if gcc  : -Wl,--whole-archive <lib> -Wl,--no-whole-archive
+        self.cpp_info.libs = ["torch", "torch_cpu", "c10", "caffe2_protos"]
+
+        if not self.options.shared:
+            self.cpp_info.libs.append("caffe2_protos") # always static
+
+        if self.options.observers:
+            self.cpp_info.libs.append("caffe2_observers")
+
+        if self.options.get_safe("with_qnnpack"):
+            self.cpp_info.libs.append("pytorch_qnnpack")
+
+        if self.options.with_cuda or self.options.with_rocm:
+            self.cpp_info.libs.append("caffe2_nvrtc")
+
+        if self.options.with_cuda:
+            self.cpp_info.libs.extend(["torch_cuda", "c10_cuda", "caffe2_detectron_ops_gpu"])
+        elif self.options.with_rocm:
+            self.cpp_info.libs.extend(["torch_hip", "c10_hip", "caffe2_detectron_ops_hip"])
+        elif not self.settings.os == "iOS":
+            self.cpp_info.libs.append("caffe2_detectron_ops")
+
         if self.options.blas == "veclib":
             self.cpp_info.frameworks.append("Accelerate")
+
+        bin_path = os.path.join(self.package_folder, "bin")
+        self.output.info("Appending PATH environment variable: {}".format(bin_path))
+        self.env_info.PATH.append(bin_path)
