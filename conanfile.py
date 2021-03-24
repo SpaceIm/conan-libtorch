@@ -1,5 +1,6 @@
 from conans import ConanFile, CMake, tools
 from conans.errors import ConanInvalidConfiguration
+import glob
 import os
 import textwrap
 
@@ -366,7 +367,7 @@ class LibtorchConan(ConanFile):
         cmake = self._configure_cmake()
         cmake.install()
         # TODO: Keep share/Aten/Declarations.yml?
-        # tools.rmdir(os.path.join(self._source_subfolder, "shared"))
+        tools.rmdir(os.path.join(self._source_subfolder, "shared"))
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_subfolder, self._module_file)
         )
@@ -401,22 +402,28 @@ class LibtorchConan(ConanFile):
         self.cpp_info.build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
-        # FIXME:
-        #  - properly define order of libs
-        #  - torch, torch_cpu, torch_cuda and c10_cuda libs should be linked with
-        #        * if clang: -Wl,-force_load,<lib>
-        #        * if msvc : -WHOLEARCHIVE:<lib>
-        #        * if gcc  : -Wl,--whole-archive <lib> -Wl,--no-whole-archive
-        self.cpp_info.libs = ["torch", "torch_cpu", "c10", "caffe2_protos"]
 
-        if not self.options.shared:
-            self.cpp_info.libs.append("caffe2_protos") # always static
+        # FIXME: - properly define order of libs:
+        #          - torch_cpu depends on c10, Caffe2_perfkernels_avx, Caffe2_perfkernels_avx2, Caffe2_perfkernels_avx512, pytorch_qnnpack
+        #          - torch depends on torch_cpu & torch_cuda & torch_hip
+        #          - Caffe2_perfkernels_avx depends on c10
+        #          - Caffe2_perfkernels_avx2 depends on c10
+        #          - Caffe2_perfkernels_avx512 depends on c10
+        #          - caffe2_detectron_ops depends on torch_cpu & c10
+        #          - c10 has no internal dependency?
+        #          - torch_cuda depends on c10_cuda
+        #          - c10_cuda depends on c10
+        #          - torch_hip depends on c10_hip
+        #          - c10_hip depends on c10
+        #          - caffe2_observers depends on torch
+        #        - torch, torch_cpu, torch_cuda and c10_cuda libs should be linked with
+        #          - if clang: -Wl,-force_load,<lib>
+        #          - if msvc : -WHOLEARCHIVE:<lib>
+        #          - if gcc  : -Wl,--whole-archive <lib> -Wl,--no-whole-archive
 
         if self.options.observers:
             self.cpp_info.libs.append("caffe2_observers")
-
-        if self.options.get_safe("with_qnnpack"):
-            self.cpp_info.libs.append("pytorch_qnnpack")
+        self.cpp_info.libs.append("torch")
 
         if self.options.with_cuda or self.options.with_rocm:
             self.cpp_info.libs.append("caffe2_nvrtc")
@@ -428,6 +435,25 @@ class LibtorchConan(ConanFile):
         elif not self.settings.os == "iOS":
             self.cpp_info.libs.append("caffe2_detectron_ops")
 
+        self.cpp_info.libs.append("torch_cpu")
+
+        if self.options.get_safe("with_qnnpack"):
+            self.cpp_info.libs.append("pytorch_qnnpack")
+
+        def _add_lib_if_exists(name):
+            if glob.glob(os.path.join(self.package_folder, "lib", "*{}.*".format(name))):
+                self.cpp_info.libs.append(name)
+
+        if not self.options.shared:
+            # These libs are always static
+            _add_lib_if_exists("Caffe2_perfkernels_avx")
+            _add_lib_if_exists("Caffe2_perfkernels_avx2")
+            _add_lib_if_exists("Caffe2_perfkernels_avx512")
+            self.cpp_info.libs.append("caffe2_protos")
+
+        self.cpp_info.libs.append("c10")
+
+        # FIXME: system libs
         if self.options.blas == "veclib":
             self.cpp_info.frameworks.append("Accelerate")
 
