@@ -370,9 +370,9 @@ class LibtorchConan(ConanFile):
     def package(self):
         self.copy("LICENSE", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
-        cmake.install()
+        cmake.install() # FIXME: something is wrong with includes layout
         # TODO: Keep share/Aten/Declarations.yml?
-        tools.rmdir(os.path.join(self._source_subfolder, "share"))
+        tools.rmdir(os.path.join(self.package_folder, "share"))
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_subfolder, self._module_file)
         )
@@ -383,11 +383,11 @@ class LibtorchConan(ConanFile):
             if(DEFINED Torch_FOUND)
                 set(TORCH_FOUND ${Torch_FOUND})
             endif()
-            if(DEFINED Torch_INCLUDE_DIR)
-                set(TORCH_INCLUDE_DIRS ${Torch_INCLUDE_DIRS})
+            if(NOT DEFINED TORCH_INCLUDE_DIRS)
+                get_target_property(TORCH_INCLUDE_DIRS Torch::Torch INTERFACE_INCLUDE_DIRECTORIES)
             endif()
-            if(DEFINED Torch_LIBRARIES)
-                set(TORCH_LIBRARIES ${Torch_LIBRARIES})
+            if(NOT DEFINED TORCH_LIBRARIES)
+                set(TORCH_LIBRARIES "Torch::Torch")
             endif()
         """)
         tools.save(module_file, content)
@@ -414,7 +414,7 @@ class LibtorchConan(ConanFile):
         #          - Caffe2_perfkernels_avx depends on c10
         #          - Caffe2_perfkernels_avx2 depends on c10
         #          - Caffe2_perfkernels_avx512 depends on c10
-        #          - caffe2_detectron_ops depends on torch_cpu & c10
+        #          - caffe2_detectron_ops_[gpu|hip] is a module library
         #          - c10 has no internal dependency?
         #          - torch_cuda depends on c10_cuda
         #          - c10_cuda depends on c10
@@ -423,24 +423,23 @@ class LibtorchConan(ConanFile):
         #          - caffe2_observers depends on torch
         #        - if static:
         #          torch, caffe2_observers, torch_cpu, caffe2_protos, torch_cuda, torch_hip, Caffe2_perfkernels_avx,
-        #          Caffe2_perfkernels_avx2, Caffe2_perfkernels_avx512 libs should be linked with
+        #          Caffe2_perfkernels_avx2, Caffe2_perfkernels_avx512 libs should be linked with whole archive
         #          - if clang: -Wl,-force_load,<lib>
         #          - if msvc : -WHOLEARCHIVE:<lib>
         #          - if gcc  : -Wl,--whole-archive,<lib> -Wl,--no-whole-archive
 
         if self.options.observers:
             self.cpp_info.libs.append("caffe2_observers")
+
         self.cpp_info.libs.append("torch")
 
         if self.options.with_cuda or self.options.with_rocm:
             self.cpp_info.libs.append("caffe2_nvrtc")
 
         if self.options.with_cuda:
-            self.cpp_info.libs.extend(["torch_cuda", "c10_cuda", "caffe2_detectron_ops_gpu"])
+            self.cpp_info.libs.extend(["torch_cuda", "c10_cuda"])
         elif self.options.with_rocm:
-            self.cpp_info.libs.extend(["torch_hip", "c10_hip", "caffe2_detectron_ops_hip"])
-        elif not self.settings.os == "iOS":
-            self.cpp_info.libs.append("caffe2_detectron_ops")
+            self.cpp_info.libs.extend(["torch_hip", "c10_hip"])
 
         self.cpp_info.libs.append("torch_cpu")
 
