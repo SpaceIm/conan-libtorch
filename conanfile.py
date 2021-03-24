@@ -367,7 +367,7 @@ class LibtorchConan(ConanFile):
         cmake = self._configure_cmake()
         cmake.install()
         # TODO: Keep share/Aten/Declarations.yml?
-        tools.rmdir(os.path.join(self._source_subfolder, "shared"))
+        tools.rmdir(os.path.join(self._source_subfolder, "share"))
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_subfolder, self._module_file)
         )
@@ -416,10 +416,12 @@ class LibtorchConan(ConanFile):
         #          - torch_hip depends on c10_hip
         #          - c10_hip depends on c10
         #          - caffe2_observers depends on torch
-        #        - torch, torch_cpu, torch_cuda and c10_cuda libs should be linked with
+        #        - if static:
+        #          torch, caffe2_observers, torch_cpu, caffe2_protos, torch_cuda, torch_hip, Caffe2_perfkernels_avx,
+        #          Caffe2_perfkernels_avx2, Caffe2_perfkernels_avx512 libs should be linked with
         #          - if clang: -Wl,-force_load,<lib>
         #          - if msvc : -WHOLEARCHIVE:<lib>
-        #          - if gcc  : -Wl,--whole-archive <lib> -Wl,--no-whole-archive
+        #          - if gcc  : -Wl,--whole-archive,<lib> -Wl,--no-whole-archive
 
         if self.options.observers:
             self.cpp_info.libs.append("caffe2_observers")
