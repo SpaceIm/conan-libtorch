@@ -240,6 +240,11 @@ class LibtorchConan(ConanFile):
         if self.options.get_safe("with_tensorpipe"):
             self.requires("tensorpipe/cci.20210309")
 
+    def build_requirements(self):
+        # FIXME: libtorch 1.8.0 requires at least python 3.6.2 to run several python scripts during build
+        pass
+        # self.build_requires("cpython/3.9.1")
+
     def source(self):
         tools.get(**self.conan_data["sources"][self.version])
         os.rename("pytorch-" + self.version, self._source_subfolder)
