@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 project(cmake_wrapper)
 
 include(conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
+
+find_package(Python 3.6.2 REQUIRED)
+set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 
 find_package(Eigen3 REQUIRED)
 set(EIGEN3_FOUND 1)
@@ -33,6 +36,11 @@ endif()
 if(CONAN_LIBTORCH_USE_FP16)
     add_library(fp16 INTERFACE IMPORTED)
     set_property(TARGET fp16 PROPERTY INTERFACE_LINK_LIBRARIES CONAN_PKG::fp16)
+endif()
+
+if(CONAN_LIBTORCH_USE_SLEEF)
+    add_library(sleef INTERFACE IMPORTED)
+    set_property(TARGET sleef PROPERTY INTERFACE_LINK_LIBRARIES CONAN_PKG::sleef)
 endif()
 
 add_subdirectory(source_subfolder)

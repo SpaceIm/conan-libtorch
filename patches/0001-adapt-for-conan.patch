@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 24d3c9b3a4..62760080b7 100644
+index 24d3c9b3a4..943807fc23 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -272,6 +272,7 @@ if(WIN32)
@@ -19,7 +19,16 @@ index 24d3c9b3a4..62760080b7 100644
    set(ONNX_NAMESPACE "onnx" CACHE STRING "A namespace for ONNX; needed to build with other frameworks that share ONNX.")
  endif()
  set(SELECTED_OP_LIST "" CACHE STRING
-@@ -617,7 +618,6 @@ endif()
+@@ -538,6 +539,8 @@ endif()
+ # The below means we are cross compiling for arm64 or x86_64 on MacOSX
+ if(NOT IOS AND CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND CMAKE_OSX_ARCHITECTURES MATCHES "^(x86_64|arm64)$")
+   set(CROSS_COMPILING_MACOSX TRUE)
++endif()
++if(0)
+   # We need to compile a universal protoc to not fail protobuf build
+   execute_process(COMMAND ./scripts/build_host_protoc.sh --other-flags "-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
+                   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+@@ -617,7 +620,6 @@ endif()
  set(CMAKE_C_STANDARD 11)
  set(CMAKE_CXX_STANDARD 14)
  if(NOT MSVC)
@@ -27,7 +36,7 @@ index 24d3c9b3a4..62760080b7 100644
    string(APPEND CMAKE_CXX_FLAGS " -Wno-narrowing")
    # Eigen fails to build with some versions, so convert this to a warning
    # Details at http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1459
-@@ -792,7 +792,7 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR})
+@@ -792,7 +794,7 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR})
  include_directories(BEFORE ${PROJECT_BINARY_DIR})
  
  include_directories(BEFORE ${PROJECT_SOURCE_DIR}/aten/src/)
@@ -36,6 +45,24 @@ index 24d3c9b3a4..62760080b7 100644
  
  # ---[ Main build
  add_subdirectory(c10)
+diff --git a/aten/src/ATen/CMakeLists.txt b/aten/src/ATen/CMakeLists.txt
+index 486724d180..eb87a1a2d3 100644
+--- a/aten/src/ATen/CMakeLists.txt
++++ b/aten/src/ATen/CMakeLists.txt
+@@ -298,13 +298,6 @@ if(NOT MSVC AND NOT EMSCRIPTEN AND NOT INTERN_BUILD_MOBILE)
+     list(APPEND ATen_THIRD_PARTY_INCLUDE ${CMAKE_BINARY_DIR}/include)
+     link_directories(${CMAKE_BINARY_DIR}/sleef/lib)
+   else()
+-    add_library(sleef SHARED IMPORTED)
+-    find_library(SLEEF_LIBRARY sleef)
+-    if(NOT SLEEF_LIBRARY)
+-      message(FATAL_ERROR "Cannot find sleef")
+-    endif()
+-    message("Found sleef: ${SLEEF_LIBRARY}")
+-    set_target_properties(sleef PROPERTIES IMPORTED_LOCATION "${SLEEF_LIBRARY}")
+   endif()
+   list(APPEND ATen_CPU_DEPENDENCY_LIBS sleef)
+ 
 diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
 index b175e5bdd6..a267af43d1 100644
 --- a/c10/CMakeLists.txt
@@ -493,3 +520,19 @@ index 4b8e59d2b2..ab4c17a461 100644
  import yaml
  from collections import OrderedDict, defaultdict
  import argparse
+diff --git a/torch/lib/c10d/CMakeLists.txt b/torch/lib/c10d/CMakeLists.txt
+index 4e72e2e32f..c740a5a57a 100644
+--- a/torch/lib/c10d/CMakeLists.txt
++++ b/torch/lib/c10d/CMakeLists.txt
+@@ -150,7 +150,10 @@ endif()
+ 
+ target_link_libraries(c10d PUBLIC ${C10D_LIBS})
+ 
+-install(TARGETS c10d DESTINATION lib)
++install(TARGETS c10d
++        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
++        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
++        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}))
+ 
+ option(BUILD_EXAMPLES "Build examples" OFF)
+ if(BUILD_EXAMPLES)

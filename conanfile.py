@@ -171,7 +171,7 @@ class LibtorchConan(ConanFile):
         self.requires("onnx/1.8.1")
         self.requires("protobuf/3.15.5")
         self.requires("pybind11/2.6.2")
-        if self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]:
+        if self._depends_on_sleef:
             self.requires("sleef/3.5.1")
         if self.options.blas == "openblas":
             self.requires("openblas/0.3.13")
@@ -239,6 +239,10 @@ class LibtorchConan(ConanFile):
             raise ConanInvalidConfiguration("gloo recipe not yet available in CCI")
         if self.options.get_safe("with_tensorpipe"):
             self.requires("tensorpipe/cci.20210309")
+
+    @property
+    def _depends_on_sleef(self):
+        return self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]
 
     def build_requirements(self):
         # FIXME: libtorch 1.8.0 requires at least python 3.6.2 to run several python scripts during build
@@ -337,6 +341,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["CONAN_LIBTORCH_USE_FXDIV"] = self.options.with_xnnpack
         self._cmake.definitions["CONAN_LIBTORCH_USE_PSIMD"] = self.options.with_xnnpack
         self._cmake.definitions["CONAN_LIBTORCH_USE_FP16"] = self.options.with_xnnpack
+        self._cmake.definitions["CONAN_LIBTORCH_USE_SLEEF"] = self._depends_on_sleef
 
         self._cmake.configure(build_folder=self._build_subfolder)
         return self._cmake
