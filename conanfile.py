@@ -153,6 +153,8 @@ class LibtorchConan(ConanFile):
             del self.options.with_gloo
             del self.options.with_tensorpipe
 
+        if self.settings.compiler.get_safe("cppstd"):
+            tools.check_min_cppstd(self, 14)
         if self.options.with_cuda and self.options.with_rocm:
             raise ConanInvalidConfiguration("libtorch doesn't yet support simultaneously building with CUDA and ROCm")
         if self.options.with_ffmpeg and not self.options.with_opencv:

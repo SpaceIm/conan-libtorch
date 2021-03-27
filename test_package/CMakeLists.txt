@@ -9,5 +9,5 @@ message(STATUS "TORCH_INCLUDE_DIRS: ${TORCH_INCLUDE_DIRS}")
 message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
 
 add_executable(${PROJECT_NAME} test_package.cpp)
-target_include_directories(${PROJECT_NAME} PRIVATE ${TORCH_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${TORCH_LIBRARIES})
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
