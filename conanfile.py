@@ -32,6 +32,7 @@ class LibtorchConan(ConanFile):
         "fakelowp": [True, False],
         "with_ffmpeg": [True, False],
         "with_gflags": [True, False],
+        "with_glog": [True, False],
         "with_leveldb": [True, False],
         "with_lmdb": [True, False],
         "with_metal": [True, False],
@@ -73,6 +74,7 @@ class LibtorchConan(ConanFile):
         "fakelowp": False,
         "with_ffmpeg": False,
         "with_gflags": False,
+        "with_glog": False,
         "with_leveldb": False,
         "with_lmdb": False,
         "with_metal": True,
@@ -196,6 +198,8 @@ class LibtorchConan(ConanFile):
             raise ConanInvalidConfiguration("ffmpeg recipe not yet available in CCI")
         if self.options.with_gflags:
             self.requires("gflags/2.2.2")
+        if self.options.with_glog:
+            self.requires("glog/0.4.0")
         if self.options.with_leveldb:
             self.requires("leveldb/1.22")
         if self.options.with_lmdb:
@@ -287,6 +291,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_FAKELOWP"] = self.options.get_safe("fakelowp", False)
         self._cmake.definitions["USE_FFMPEG"] = self.options.with_ffmpeg
         self._cmake.definitions["USE_GFLAGS"] = self.options.with_gflags
+        self._cmake.definitions["USE_GLOG"] = self.options.with_glog
         self._cmake.definitions["USE_LEVELDB"] = self.options.with_leveldb
         self._cmake.definitions["USE_LITE_PROTO"] = False
         self._cmake.definitions["USE_LMDB"] = self.options.with_lmdb
@@ -452,6 +457,9 @@ class LibtorchConan(ConanFile):
         def _gflags():
             return ["gflags::gflags"] if self.options.with_gflags else []
 
+        def _glog():
+            return ["glog::glog"] if self.options.with_glog else []
+
         def _leveldb():
             return ["leveldb::leveldb"] if self.options.with_leveldb else []
 
@@ -508,11 +516,24 @@ class LibtorchConan(ConanFile):
         self.cpp_info.components["_libtorch"].requires.append("libtorch_cpu")
 
         # torch_cpu
+        # TODO: see what's in Caffe2_PUBLIC_DEPENDENCY_LIBS, Caffe2_DEPENDENCY_WHOLE_LINK_LIBS, Caffe2_DEPENDENCY_LIBS for torch_cpu depencencies
         _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
-        self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_c10")
+        self.cpp_info.components["libtorch_cpu"].requires.extend(
+            ["libtorch_c10", "cpuinfo::cpuinfo", "eigen::eigen"] +
+            _openblas() + _gloo() + _onednn() + _sleef() + _leveldb()
+        )
+        if self.settings.os == "Linux":
+            self.cpp_info.components["libtorch_cpu"].system_libs.extend(["dl", "m", "pthread", "rt"])
+        if self.options.blas == "veclib":
+            self.cpp_info.components["libtorch_cpu"].frameworks.append("Accelerate")
 
         # c10
         self.cpp_info.components["libtorch_c10"].libs = ["c10"]
+        self.cpp_info.components["libtorch_c10"].requires.extend(
+            _gflags() + _glog() + _libnuma()
+        )
+        if self.settings.os == "Android":
+            self.cpp_info.components["libtorch_c10"].system_libs.append("log")
 
         #------------------
         # FIXME: let's put all build modules, include dirs, external dependencies (except protobuf) and system/frameworks libs in c10 for the moment
@@ -521,17 +542,14 @@ class LibtorchConan(ConanFile):
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
         self.cpp_info.components["libtorch_c10"].requires.extend([
-            "cpuinfo::cpuinfo", "eigen::eigen", "fmt::fmt",
-            "foxi::foxi", "onnx::onnx", "pybind11::pybind11"]
+            "fmt::fmt", "foxi::foxi", "onnx::onnx", "pybind11::pybind11"]
         )
         self.cpp_info.components["libtorch_c10"].requires.extend(
-            _sleef() + _openblas() + _tbb() + _fbgemm() + _ffmpeg() + _gflags() +
-            _leveldb() + _nnpack() + _xnnpack() + _pthreadpool() + _libnuma() +
+            _sleef() + _openblas() + _tbb() + _fbgemm() + _ffmpeg() +
+            _nnpack() + _xnnpack() + _pthreadpool() +
             _opencl() + _opencv() + _redis() + _rocksdb() + _vulkan() + _shaderc() +
-            _zeromq() + _zstd() + _onednn() + _openmpi() + _gloo() + _tensorpipe()
+            _zeromq() + _zstd() + _onednn() + _tensorpipe()
         )
-        if self.options.blas == "veclib":
-            self.cpp_info.components["libtorch_c10"].frameworks.append("Accelerate")
         #------------------
 
         if self.options.shared:
@@ -568,7 +586,7 @@ class LibtorchConan(ConanFile):
         # c10d
         if self.options.distributed:
             self.cpp_info.components["libtorch_c10d"].libs = ["c10d"] # always static
-            self.cpp_info.components["libtorch_c10d"].requires.append("_libtorch")
+            self.cpp_info.components["libtorch_c10d"].requires.extend(["_libtorch"] + _openmpi() + _gloo())
 
         # caffe2_nvrtc
         if self.options.with_cuda or self.options.with_rocm:
