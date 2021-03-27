@@ -1,16 +1,17 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 24d3c9b3a4..943807fc23 100644
+index 24d3c9b3a4..66cb5bbf90 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -272,6 +272,7 @@ if(WIN32)
+@@ -272,7 +272,7 @@ if(WIN32)
    set(USE_TENSORPIPE OFF)
    message(WARNING "TensorPipe cannot be used on Windows. Set it to OFF")
  
-+  # What do do here?
-   if(USE_DISTRIBUTED AND NOT DEFINED ENV{libuv_ROOT})
+-  if(USE_DISTRIBUTED AND NOT DEFINED ENV{libuv_ROOT})
++  if(0) # libuv is useless for windows build, don't disable USE_DISTRIBUTED for that
      find_library(
        libuv_tmp_LIBRARY
-@@ -336,7 +337,7 @@ cmake_dependent_option(
+       NAMES uv libuv
+@@ -336,7 +336,7 @@ cmake_dependent_option(
  
  if(NOT USE_SYSTEM_ONNX)
    set(ONNX_NAMESPACE "onnx_torch" CACHE STRING "A namespace for ONNX; needed to build with other frameworks that share ONNX.")
@@ -19,7 +20,7 @@ index 24d3c9b3a4..943807fc23 100644
    set(ONNX_NAMESPACE "onnx" CACHE STRING "A namespace for ONNX; needed to build with other frameworks that share ONNX.")
  endif()
  set(SELECTED_OP_LIST "" CACHE STRING
-@@ -538,6 +539,8 @@ endif()
+@@ -538,6 +538,8 @@ endif()
  # The below means we are cross compiling for arm64 or x86_64 on MacOSX
  if(NOT IOS AND CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND CMAKE_OSX_ARCHITECTURES MATCHES "^(x86_64|arm64)$")
    set(CROSS_COMPILING_MACOSX TRUE)
@@ -28,7 +29,7 @@ index 24d3c9b3a4..943807fc23 100644
    # We need to compile a universal protoc to not fail protobuf build
    execute_process(COMMAND ./scripts/build_host_protoc.sh --other-flags "-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
                    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-@@ -617,7 +620,6 @@ endif()
+@@ -617,7 +619,6 @@ endif()
  set(CMAKE_C_STANDARD 11)
  set(CMAKE_CXX_STANDARD 14)
  if(NOT MSVC)
@@ -36,7 +37,7 @@ index 24d3c9b3a4..943807fc23 100644
    string(APPEND CMAKE_CXX_FLAGS " -Wno-narrowing")
    # Eigen fails to build with some versions, so convert this to a warning
    # Details at http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1459
-@@ -792,7 +794,7 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR})
+@@ -792,7 +793,7 @@ include_directories(BEFORE ${PROJECT_SOURCE_DIR})
  include_directories(BEFORE ${PROJECT_BINARY_DIR})
  
  include_directories(BEFORE ${PROJECT_SOURCE_DIR}/aten/src/)
@@ -521,7 +522,7 @@ index 4b8e59d2b2..ab4c17a461 100644
  from collections import OrderedDict, defaultdict
  import argparse
 diff --git a/torch/lib/c10d/CMakeLists.txt b/torch/lib/c10d/CMakeLists.txt
-index 4e72e2e32f..c740a5a57a 100644
+index 4e72e2e32f..87751c779c 100644
 --- a/torch/lib/c10d/CMakeLists.txt
 +++ b/torch/lib/c10d/CMakeLists.txt
 @@ -150,7 +150,10 @@ endif()
@@ -532,7 +533,7 @@ index 4e72e2e32f..c740a5a57a 100644
 +install(TARGETS c10d
 +        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 +        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}))
++        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
  
  option(BUILD_EXAMPLES "Build examples" OFF)
  if(BUILD_EXAMPLES)

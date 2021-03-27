@@ -61,7 +61,7 @@ class LibtorchConan(ConanFile):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "blas": "openblas", # should be mkl on non mobile os
+        "blas": "openblas", # TODO: should be mkl on non mobile os
         "aten_parallel_backend": "native",
         "with_cuda": False,
         "with_cudnn": True,
@@ -233,8 +233,6 @@ class LibtorchConan(ConanFile):
             self.requires("zstd/1.4.9")
         if self.options.with_mkldnn:
             raise ConanInvalidConfiguration("oneDNN (MKL-DNN) recipe not yet available in CCI")
-        if self.settings.os == "Windows" and self.options.distributed:
-            self.requires("libuv/1.41.0")
         if self.options.get_safe("with_mpi"):
             self.requires("openmpi/4.1.0")
         if self.options.get_safe("with_gloo"):
@@ -380,6 +378,7 @@ class LibtorchConan(ConanFile):
         cmake.install() # FIXME: something is wrong with includes layout
         # TODO: Keep share/Aten/Declarations.yml?
         tools.rmdir(os.path.join(self.package_folder, "share"))
+        tools.remove_files_by_mask(os.path.join(self.package_folder, "bin"), "*.pdb")
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_subfolder, self._module_file)
         )
@@ -410,65 +409,208 @@ class LibtorchConan(ConanFile):
     def package_info(self):
         self.cpp_info.names["cmake_find_package"] = "Torch"
         self.cpp_info.names["cmake_find_package_multi"] = "Torch"
-        self.cpp_info.builddirs.append(self._module_subfolder)
-        self.cpp_info.build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
-        self.cpp_info.build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
-        self.cpp_info.includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
 
-        # FIXME: - properly define order of libs:
-        #          - torch_cpu depends on c10, Caffe2_perfkernels_avx, Caffe2_perfkernels_avx2, Caffe2_perfkernels_avx512, pytorch_qnnpack
-        #          - torch depends on torch_cpu & torch_cuda & torch_hip
-        #          - Caffe2_perfkernels_avx depends on c10
-        #          - Caffe2_perfkernels_avx2 depends on c10
-        #          - Caffe2_perfkernels_avx512 depends on c10
-        #          - caffe2_detectron_ops_[gpu|hip] is a module library
-        #          - c10 has no internal dependency?
-        #          - torch_cuda depends on c10_cuda
-        #          - c10_cuda depends on c10
-        #          - torch_hip depends on c10_hip
-        #          - c10_hip depends on c10
-        #          - caffe2_observers depends on torch
-        #        - if static:
-        #          torch, caffe2_observers, torch_cpu, caffe2_protos, torch_cuda, torch_hip, Caffe2_perfkernels_avx,
-        #          Caffe2_perfkernels_avx2, Caffe2_perfkernels_avx512 libs should be linked with whole archive
-        #          - if clang: -Wl,-force_load,<lib>
-        #          - if msvc : -WHOLEARCHIVE:<lib>
-        #          - if gcc  : -Wl,--whole-archive,<lib> -Wl,--no-whole-archive
+        def _lib_exists(name):
+            return True if glob.glob(os.path.join(self.package_folder, "lib", "*{}.*".format(name))) else False
 
+        def _add_whole_archive_lib(component, libname, shared=False):
+            if shared:
+                self.cpp_info.components[component].libs.append(libname)
+            else:
+                if self.settings.compiler == "Visual Studio":
+                    lib_fullpath = os.path.join(self.package_folder, "lib", "{}".format(libname))
+                    self.output.info("lib path: {}".format(lib_fullpath))
+                    whole_archive = "\"/WHOLEARCHIVE:{}\"".format(lib_fullpath)
+                elif self.settings.compiler == "gcc":
+                    whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(libname)
+                elif self.settings.compiler in ["clang", "apple-clang"]:
+                    whole_archive = "-Wl,-force_load,{}".format(libname)
+                else:
+                    whole_archive = "-l{}".format(libname)
+                self.cpp_info.components[component].exelinkflags.append(whole_archive)
+                self.cpp_info.components[component].sharedlinkflags.append(whole_archive)
+
+        def _sleef():
+            return ["sleef::sleef"] if self._depends_on_sleef else []
+
+        def _openblas():
+            return ["openblas::openblas"] if self.options.blas == "openblas" else []
+
+        def _tbb():
+            return ["tbb::tbb"] if self.options.aten_parallel_backend == "tbb" else []
+
+        def _fbgemm():
+            return ["fbgemm::fbgemm"] if self.options.with_fbgemm else []
+
+        def _ffmpeg():
+            return ["ffmpeg::ffmpeg"] if self.options.with_ffmpeg else []
+
+        def _gflags():
+            return ["gflags::gflags"] if self.options.with_gflags else []
+
+        def _leveldb():
+            return ["leveldb::leveldb"] if self.options.with_leveldb else []
+
+        def _nnpack():
+            return ["nnpack::nnpack"] if self.options.get_safe("with_nnpack") else []
+
+        def _xnnpack():
+            return ["xnnpack::xnnpack"] if self.options.with_xnnpack else []
+
+        def _pthreadpool():
+            return ["pthreadpool::pthreadpool"] if self.options.get_safe("with_nnpack") or self.options.get_safe("with_qnnpack") or self.options.with_xnnpack else []
+
+        def _libnuma():
+            return ["libnuma::libnuma"] if self.options.get_safe("with_numa") else []
+
+        def _opencl():
+            return ["opencl-headers::opencl-headers", "opencl-icd-loader::opencl-icd-loader"] if self.options.with_opencl else []
+
+        def _opencv():
+            return ["opencv::opencv"] if self.options.with_opencv else []
+
+        def _redis():
+            return ["hiredis::hiredis"] if self.options.with_redis else []
+
+        def _rocksdb():
+            return ["rocksdb::rocksdb"] if self.options.with_rocksdb else []
+
+        def _vulkan():
+            return ["vulkan-headers::vulkan-headers", "vulkan-loader::vulkan-loader"] if self.options.with_vulkan else []
+
+        def _shaderc():
+            return ["shaderc::shaderc"] if self.options.get_safe("vulkan_shaderc_runtime") else []
+
+        def _zeromq():
+            return ["zeromq::zeromq"] if self.options.with_zmq else []
+
+        def _zstd():
+            return ["zstd::zstd"] if self.options.with_zstd else []
+
+        def _onednn():
+            return ["onednn::onednn"] if self.options.with_mkldnn else []
+
+        def _openmpi():
+            return ["openmpi::openmpi"] if self.options.get_safe("with_mpi") else []
+
+        def _gloo():
+            return ["gloo::gloo"] if self.options.get_safe("with_gloo") else []
+
+        def _tensorpipe():
+            return ["tensorpipe::tensorpipe"] if self.options.get_safe("with_tensorpipe") else []
+
+        # torch
+        _add_whole_archive_lib("_libtorch", "torch", shared=self.options.shared)
+        self.cpp_info.components["_libtorch"].requires.append("libtorch_cpu")
+
+        # torch_cpu
+        _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
+        self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_c10")
+
+        # c10
+        self.cpp_info.components["libtorch_c10"].libs = ["c10"]
+
+        #------------------
+        # FIXME: let's put all build modules, include dirs, external dependencies (except protobuf) and system/frameworks libs in c10 for the moment
+        self.cpp_info.components["libtorch_c10"].builddirs.append(self._module_subfolder)
+        self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
+        self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
+        self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
+        self.cpp_info.components["libtorch_c10"].requires.extend([
+            "cpuinfo::cpuinfo", "eigen::eigen", "fmt::fmt",
+            "foxi::foxi", "onnx::onnx", "pybind11::pybind11"]
+        )
+        self.cpp_info.components["libtorch_c10"].requires.extend(
+            _sleef() + _openblas() + _tbb() + _fbgemm() + _ffmpeg() + _gflags() +
+            _leveldb() + _nnpack() + _xnnpack() + _pthreadpool() + _libnuma() +
+            _opencl() + _opencv() + _redis() + _rocksdb() + _vulkan() + _shaderc() +
+            _zeromq() + _zstd() + _onednn() + _openmpi() + _gloo() + _tensorpipe()
+        )
+        if self.options.blas == "veclib":
+            self.cpp_info.components["libtorch_c10"].frameworks.append("Accelerate")
+        #------------------
+
+        if self.options.shared:
+            self.cpp_info.components["libtorch_cpu"].requires.append("protobuf::protobuf")
+        else:
+            # caffe2_protos
+            _add_whole_archive_lib("libtorch_caffe2_protos", "caffe2_protos")
+            self.cpp_info.components["libtorch_caffe2_protos"].requires.append("protobuf::protobuf")
+            self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_caffe2_protos")
+
+            # Caffe2_perfkernels_avx
+            if _lib_exists("Caffe2_perfkernels_avx"):
+                _add_whole_archive_lib("libtorch_caffe2_perfkernels_avx", "Caffe2_perfkernels_avx", shared=self.options.shared)
+                self.cpp_info.components["libtorch_caffe2_perfkernels_avx"].requires.append("libtorch_c10")
+                self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_caffe2_perfkernels_avx")
+
+            # Caffe2_perfkernels_avx2
+            if _lib_exists("Caffe2_perfkernels_avx2"):
+                _add_whole_archive_lib("libtorch_caffe2_perfkernels_avx2", "Caffe2_perfkernels_avx2", shared=self.options.shared)
+                self.cpp_info.components["libtorch_caffe2_perfkernels_avx2"].requires.append("libtorch_c10")
+                self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_caffe2_perfkernels_avx2")
+
+            # Caffe2_perfkernels_avx512
+            if _lib_exists("Caffe2_perfkernels_avx512"):
+                _add_whole_archive_lib("libtorch_caffe2_perfkernels_avx512", "Caffe2_perfkernels_avx512", shared=self.options.shared)
+                self.cpp_info.components["libtorch_caffe2_perfkernels_avx512"].requires.append("libtorch_c10")
+                self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_caffe2_perfkernels_avx512")
+
+        # caffe2_observers
         if self.options.observers:
-            self.cpp_info.libs.append("caffe2_observers")
+            _add_whole_archive_lib("libtorch_caffe2_observers", "caffe2_observers", shared=self.options.shared)
+            self.cpp_info.components["libtorch_caffe2_observers"].requires.append("_libtorch")
 
-        self.cpp_info.libs.append("torch")
+        # c10d
+        if self.options.distributed:
+            self.cpp_info.components["libtorch_c10d"].libs = ["c10d"] # always static
+            self.cpp_info.components["libtorch_c10d"].requires.append("_libtorch")
 
+        # caffe2_nvrtc
         if self.options.with_cuda or self.options.with_rocm:
-            self.cpp_info.libs.append("caffe2_nvrtc")
+            self.cpp_info.components["libtorch_caffe2_nvrtc"].libs = ["caffe2_nvrtc"]
 
         if self.options.with_cuda:
-            self.cpp_info.libs.extend(["torch_cuda", "c10_cuda"])
+            # torch_cuda
+            _add_whole_archive_lib("libtorch_torch_cuda", "torch_cuda", shared=self.options.shared)
+            self.cpp_info.components["libtorch_torch_cuda"].requires.append("libtorch_c10_cuda")
+            self.cpp_info.components["_libtorch"].requires.append("libtorch_torch_cuda")
+
+            # c10_cuda
+            self.cpp_info.components["libtorch_c10_cuda"].libs = ["c10_cuda"]
+            self.cpp_info.components["libtorch_c10_cuda"].requires.append("libtorch_c10")
+
+            # caffe2_detectron_ops_gpu
+            if self.options.shared:
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].libs = ["caffe2_detectron_ops_gpu"]
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].requires.append("libtorch_cpu", "libtorch_c10")
         elif self.options.with_rocm:
-            self.cpp_info.libs.extend(["torch_hip", "c10_hip"])
+            # torch_hip
+            _add_whole_archive_lib("libtorch_torch_hip", "torch_hip", shared=self.options.shared)
+            self.cpp_info.components["libtorch_torch_hip"].requires.append("libtorch_c10_hip")
+            self.cpp_info.components["_libtorch"].requires.append("libtorch_torch_hip")
 
-        self.cpp_info.libs.append("torch_cpu")
+            # c10_hip
+            self.cpp_info.components["libtorch_c10_hip"].libs = ["c10_hip"]
+            self.cpp_info.components["libtorch_c10_hip"].requires.append("libtorch_c10")
 
+            # caffe2_detectron_ops_hip
+            if self.options.shared:
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_hip"].libs = ["caffe2_detectron_ops_hip"]
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_hip"].requires.extend(["libtorch_cpu", "libtorch_c10"])
+        elif not self.settings.os == "iOS":
+            # caffe2_detectron_ops
+            if self.options.shared:
+                self.cpp_info.components["libtorch_caffe2_detectron_ops"].libs = ["caffe2_detectron_ops"]
+                self.cpp_info.components["libtorch_caffe2_detectron_ops"].requires.extend(["libtorch_cpu", "libtorch_c10"])
+
+        # pytorch_qnnpack
         if self.options.get_safe("with_qnnpack"):
-            self.cpp_info.libs.append("pytorch_qnnpack")
-
-        def _add_lib_if_exists(name):
-            if glob.glob(os.path.join(self.package_folder, "lib", "*{}.*".format(name))):
-                self.cpp_info.libs.append(name)
-
-        if not self.options.shared:
-            # These libs are always static
-            _add_lib_if_exists("Caffe2_perfkernels_avx")
-            _add_lib_if_exists("Caffe2_perfkernels_avx2")
-            _add_lib_if_exists("Caffe2_perfkernels_avx512")
-            self.cpp_info.libs.append("caffe2_protos")
-
-        self.cpp_info.libs.append("c10")
-
-        # FIXME: system libs
-        if self.options.blas == "veclib":
-            self.cpp_info.frameworks.append("Accelerate")
+            self.cpp_info.components["libtorch_pytorch_qnnpack"].libs = ["pytorch_qnnpack"]
+            self.cpp_info.components["libtorch_pytorch_qnnpack"].requires.extend([
+                "fp16::fp16", "fxdiv::fxdiv", "psimd::psimd", "pthreadpool::pthreadpool"
+            ])
+            self.cpp_info.components["libtorch_cpu"].requires.extend("libtorch_pytorch_qnnpack")
 
         bin_path = os.path.join(self.package_folder, "bin")
         self.output.info("Appending PATH environment variable: {}".format(bin_path))
