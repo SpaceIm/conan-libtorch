@@ -330,6 +330,8 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["HAVE_SOVERSION"] = True
         self._cmake.definitions["USE_SYSTEM_LIBS"] = True
 
+        self._cmake.definitions["USE_LAPACK"] = False # TODO: add an option
+
         self._cmake.definitions["BUILDING_WITH_TORCH_LIBS"] = True
         self._cmake.definitions["BLAS"] = self._blas_cmake_option_value
 
@@ -417,14 +419,16 @@ class LibtorchConan(ConanFile):
             if shared:
                 self.cpp_info.components[component].libs.append(libname)
             else:
+                lib_folder = os.path.join(self.package_folder, "lib")
                 if self.settings.compiler == "Visual Studio":
-                    lib_fullpath = os.path.join(self.package_folder, "lib", "{}".format(libname))
-                    self.output.info("lib path: {}".format(lib_fullpath))
+                    lib_fullpath = os.path.join(lib_folder, "{}".format(libname))
                     whole_archive = "\"/WHOLEARCHIVE:{}\"".format(lib_fullpath)
                 elif self.settings.compiler == "gcc":
-                    whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(libname)
+                    lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
+                    whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(lib_fullpath)
                 elif self.settings.compiler in ["clang", "apple-clang"]:
-                    whole_archive = "-Wl,-force_load,{}".format(libname)
+                    lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
+                    whole_archive = "-Wl,-force_load,{}".format(lib_fullpath)
                 else:
                     whole_archive = "-l{}".format(libname)
                 self.cpp_info.components[component].exelinkflags.append(whole_archive)
@@ -583,7 +587,7 @@ class LibtorchConan(ConanFile):
             # caffe2_detectron_ops_gpu
             if self.options.shared:
                 self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].libs = ["caffe2_detectron_ops_gpu"]
-                self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].requires.append("libtorch_cpu", "libtorch_c10")
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].requires.extend(["libtorch_cpu", "libtorch_c10"])
         elif self.options.with_rocm:
             # torch_hip
             _add_whole_archive_lib("libtorch_torch_hip", "torch_hip", shared=self.options.shared)
@@ -610,7 +614,7 @@ class LibtorchConan(ConanFile):
             self.cpp_info.components["libtorch_pytorch_qnnpack"].requires.extend([
                 "fp16::fp16", "fxdiv::fxdiv", "psimd::psimd", "pthreadpool::pthreadpool"
             ])
-            self.cpp_info.components["libtorch_cpu"].requires.extend("libtorch_pytorch_qnnpack")
+            self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_pytorch_qnnpack")
 
         bin_path = os.path.join(self.package_folder, "bin")
         self.output.info("Appending PATH environment variable: {}".format(bin_path))

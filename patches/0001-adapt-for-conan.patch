@@ -313,7 +313,7 @@ index a9d2e4f50e..a8bd3a2a94 100644
    configure_file(
        ${PROJECT_SOURCE_DIR}/tools/build_variables.bzl
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index 06464e799a..a621b7a97d 100644
+index 06464e799a..a758f7b761 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
 @@ -82,7 +82,7 @@ else()
@@ -412,7 +412,19 @@ index 06464e799a..a621b7a97d 100644
    # Recover the build shared libs option.
    set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
  endif()
-@@ -1776,7 +1754,6 @@ endif()
+@@ -1661,8 +1639,9 @@ if(NOT INTERN_BUILD_MOBILE)
+       CACHE BOOL "Copy the required BLAS DLLs into the TH install dirs")
+   endif()
+ 
+-  find_package(LAPACK)
+-  if(LAPACK_FOUND)
++  option(USE_LAPACK "Use LAPACK" ON)
++  if(USE_LAPACK)
++    find_package(LAPACK REQUIRED)
+     set(USE_LAPACK 1)
+     list(APPEND Caffe2_PRIVATE_DEPENDENCY_LIBS ${LAPACK_LIBRARIES})
+   else()
+@@ -1776,7 +1755,6 @@ endif()
  #
  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
@@ -420,7 +432,7 @@ index 06464e799a..a621b7a97d 100644
  
  # Disable compiler feature checks for `fmt`.
  #
-@@ -1785,9 +1762,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+@@ -1785,9 +1763,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
  # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
  # `fmt` is compatible with a superset of the compilers that PyTorch is, it
  # shouldn't be too bad to just disable the checks.
