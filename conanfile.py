@@ -518,7 +518,7 @@ class LibtorchConan(ConanFile):
         # TODO: see what's in Caffe2_PUBLIC_DEPENDENCY_LIBS, Caffe2_DEPENDENCY_WHOLE_LINK_LIBS, Caffe2_DEPENDENCY_LIBS for torch_cpu depencencies
         _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
         self.cpp_info.components["libtorch_cpu"].requires.extend(
-            ["libtorch_c10", "cpuinfo::cpuinfo", "eigen::eigen"] +
+            ["libtorch_c10", "cpuinfo::cpuinfo", "eigen::eigen", "foxi::foxi"] +
             _openblas() + _gloo() + _onednn() + _sleef() + _leveldb()
         )
         if self.settings.os == "Linux":
@@ -541,7 +541,7 @@ class LibtorchConan(ConanFile):
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
         self.cpp_info.components["libtorch_c10"].requires.extend([
-            "fmt::fmt", "foxi::foxi", "onnx::onnx"]
+            "fmt::fmt", "onnx::onnx"]
         )
         self.cpp_info.components["libtorch_c10"].requires.extend(
             _sleef() + _openblas() + _tbb() + _fbgemm() + _ffmpeg() +
@@ -604,7 +604,7 @@ class LibtorchConan(ConanFile):
             # caffe2_detectron_ops_gpu
             if self.options.shared:
                 self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].libs = ["caffe2_detectron_ops_gpu"]
-                self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].requires.extend(["libtorch_cpu", "libtorch_c10"])
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_gpu"].requires.extend(["_libtorch", "libtorch_cpu", "libtorch_c10"])
         elif self.options.with_rocm:
             # torch_hip
             _add_whole_archive_lib("libtorch_torch_hip", "torch_hip", shared=self.options.shared)
@@ -618,18 +618,18 @@ class LibtorchConan(ConanFile):
             # caffe2_detectron_ops_hip
             if self.options.shared:
                 self.cpp_info.components["libtorch_caffe2_detectron_ops_hip"].libs = ["caffe2_detectron_ops_hip"]
-                self.cpp_info.components["libtorch_caffe2_detectron_ops_hip"].requires.extend(["libtorch_cpu", "libtorch_c10"])
+                self.cpp_info.components["libtorch_caffe2_detectron_ops_hip"].requires.extend(["_libtorch", "libtorch_cpu", "libtorch_c10"])
         elif not self.settings.os == "iOS":
             # caffe2_detectron_ops
             if self.options.shared:
                 self.cpp_info.components["libtorch_caffe2_detectron_ops"].libs = ["caffe2_detectron_ops"]
-                self.cpp_info.components["libtorch_caffe2_detectron_ops"].requires.extend(["libtorch_cpu", "libtorch_c10"])
+                self.cpp_info.components["libtorch_caffe2_detectron_ops"].requires.extend(["_libtorch", "libtorch_cpu", "libtorch_c10"])
 
         # pytorch_qnnpack
         if self.options.get_safe("with_qnnpack"):
             self.cpp_info.components["libtorch_pytorch_qnnpack"].libs = ["pytorch_qnnpack"]
             self.cpp_info.components["libtorch_pytorch_qnnpack"].requires.extend([
-                "fp16::fp16", "fxdiv::fxdiv", "psimd::psimd", "pthreadpool::pthreadpool"
+                "cpuinfo::cpuinfo", "fp16::fp16", "fxdiv::fxdiv", "psimd::psimd", "pthreadpool::pthreadpool"
             ])
             self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_pytorch_qnnpack")
 
