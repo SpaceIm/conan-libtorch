@@ -174,7 +174,6 @@ class LibtorchConan(ConanFile):
         self.requires("foxi/cci.20210217")
         self.requires("onnx/1.8.1")
         self.requires("protobuf/3.15.5")
-        self.requires("pybind11/2.6.2")
         if self._depends_on_sleef:
             self.requires("sleef/3.5.1")
         if self.options.blas == "openblas":
@@ -542,7 +541,7 @@ class LibtorchConan(ConanFile):
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
         self.cpp_info.components["libtorch_c10"].requires.extend([
-            "fmt::fmt", "foxi::foxi", "onnx::onnx", "pybind11::pybind11"]
+            "fmt::fmt", "foxi::foxi", "onnx::onnx"]
         )
         self.cpp_info.components["libtorch_c10"].requires.extend(
             _sleef() + _openblas() + _tbb() + _fbgemm() + _ffmpeg() +
