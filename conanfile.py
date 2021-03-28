@@ -251,7 +251,9 @@ class LibtorchConan(ConanFile):
 
     def build_requirements(self):
         # FIXME: libtorch 1.8.0 requires:
-        #  - python 3.6.2+ with pyyaml and typing_extensions libs
+        #  - python 3.6.2+ with pyyaml, dataclasses and typing_extensions libs
+        #  or
+        #  - python 3.7+ with pyyaml and typing_extensions libs
         #  or
         #  - python 3.8+ with pyyaml lib
         pass
