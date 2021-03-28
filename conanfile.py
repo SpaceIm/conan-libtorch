@@ -102,6 +102,8 @@ class LibtorchConan(ConanFile):
         "with_tensorpipe": True,
     }
 
+    short_paths = True
+
     exports_sources = ["CMakeLists.txt", "patches/**"]
     generators = "cmake", "cmake_find_package", "cmake_find_package_multi"
     _cmake = None
