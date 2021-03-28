@@ -91,10 +91,11 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions/setup-python@v1
         with:
-          python-version: '3.8'
+          python-version: '3.9.2'
       - name: Install Conan
         run: |
           pip install bincrafters_package_tools
+          pip install pyyaml
           conan user
       - name: Run
         env:

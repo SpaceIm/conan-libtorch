@@ -250,7 +250,10 @@ class LibtorchConan(ConanFile):
         return self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]
 
     def build_requirements(self):
-        # FIXME: libtorch 1.8.0 requires at least python 3.6.2 to run several python scripts during build
+        # FIXME: libtorch 1.8.0 requires:
+        #  - python 3.6.2+ with pyyaml and typing_extensions libs
+        #  or
+        #  - python 3.8+ with pyyaml lib
         pass
         # self.build_requires("cpython/3.9.1")
 
