@@ -1,0 +1,356 @@
+fix nvcc compilation errors with VC >= 14.28
+issue: https://github.com/pytorch/pytorch/issues/54382
+patch derived from https://github.com/pytorch/pytorch/pull/54386
+
+--- a/aten/src/ATen/native/cuda/AdaptiveAveragePooling.cu
++++ b/aten/src/ATen/native/cuda/AdaptiveAveragePooling.cu
+@@ -10,13 +10,14 @@
+ #include <THC/THCNumerics.cuh>
+ #include <ATen/native/cuda/LaunchUtils.h>
+ #include <ATen/cuda/CUDAApplyUtils.cuh>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ #include <algorithm>
+ #include <cfloat>
+ #include <cmath>
+ 
+-#define START_IND(a,b,c) (int)std::floor((float)(a * c) / b)
+-#define END_IND(a,b,c) (int)std::ceil((float)((a + 1) * c) / b)
++#define START_IND(a,b,c) (int)floor_((float)(a * c) / b)
++#define END_IND(a,b,c) (int)ceil_((float)((a + 1) * c) / b)
+ 
+ #define START_IND_INT(a,b,c) ((a * c) / b)
+ #define END_IND_INT(a,b,c) (((a + 1) * c + b - 1) / b)
+--- a/aten/src/ATen/native/cuda/AdaptiveAveragePooling3d.cu
++++ b/aten/src/ATen/native/cuda/AdaptiveAveragePooling3d.cu
+@@ -8,6 +8,7 @@
+ #include <THC/THCNumerics.cuh>
+ #include <THC/THCAtomics.cuh>  // for gpuAtomicAdd
+ #include <c10/util/Exception.h>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ #include <algorithm>
+ #include <cfloat>
+@@ -19,11 +20,11 @@ namespace native {
+ namespace {
+ 
+ __device__ inline int start_index(int a, int b, int c) {
+-  return (int)std::floor((float)(a * c) / b);
++  return (int)floor_((float)(a * c) / b);
+ }
+ 
+ __device__ inline int end_index(int a, int b, int c) {
+-  return (int)std::ceil((float)((a + 1) * c) / b);
++  return (int)ceil_((float)((a + 1) * c) / b);
+ }
+ 
+ // 5d tensor B x D x T x H x W
+--- a/aten/src/ATen/native/cuda/AdaptiveMaxPooling2d.cu
++++ b/aten/src/ATen/native/cuda/AdaptiveMaxPooling2d.cu
+@@ -8,6 +8,7 @@
+ #include <THC/THCAtomics.cuh>
+ #include <THC/THCGeneral.h>
+ #include <THC/THCNumerics.cuh>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ #include <algorithm>
+ #include <cfloat>
+@@ -20,11 +21,11 @@ namespace native {
+ namespace {
+ 
+ __device__ inline int start_index(int a, int b, int c) {
+-  return (int)std::floor((float)(a * c) / b);
++  return (int)floor_((float)(a * c) / b);
+ }
+ 
+ __device__ inline int end_index(int a, int b, int c) {
+-  return (int)std::ceil((float)((a + 1) * c) / b);
++  return (int)ceil_((float)((a + 1) * c) / b);
+ }
+ 
+ // 4d tensor B x D x H x W
+--- a/aten/src/ATen/native/cuda/AdaptiveMaxPooling3d.cu
++++ b/aten/src/ATen/native/cuda/AdaptiveMaxPooling3d.cu
+@@ -8,6 +8,7 @@
+ #include <THC/THCAtomics.cuh>
+ #include <THC/THCGeneral.h>
+ #include <THC/THCNumerics.cuh>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ #include <algorithm>
+ #include <cfloat>
+@@ -20,11 +21,11 @@ namespace native {
+ namespace {
+ 
+ __device__ inline int start_index(int a, int b, int c) {
+-  return (int)std::floor((float)(a * c) / b);
++  return (int)floor_((float)(a * c) / b);
+ }
+ 
+ __device__ inline int end_index(int a, int b, int c) {
+-  return (int)std::ceil((float)((a + 1) * c) / b);
++  return (int)ceil_((float)((a + 1) * c) / b);
+ }
+ 
+ // 5d tensor B x D x T x H x W
+--- a/aten/src/ATen/native/cuda/BinaryMulDivKernel.cu
++++ b/aten/src/ATen/native/cuda/BinaryMulDivKernel.cu
+@@ -5,6 +5,7 @@
+ #include <ATen/native/TensorIterator.h>
+ #include <ATen/native/BinaryOps.h>
+ #include <c10/cuda/CUDAGuard.h>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ // NOTE: CUDA on Windows requires that the enclosing function
+ // of a __device__ lambda not have internal linkage.
+@@ -43,7 +44,6 @@ struct MulFunctor<bool> {
+   }
+ };
+ 
+-
+ void div_true_kernel_cuda(TensorIterator& iter) {
+   if (iter.is_cpu_scalar(2)) {
+     // optimization for floating-point types: if the second operand is a CPU
+@@ -81,13 +81,13 @@ void div_trunc_kernel_cuda(TensorIterator& iter) {
+       auto inv_b = accscalar_t(1.0) / iter.scalar_value<accscalar_t>(2);
+       iter.remove_operand(2);
+       gpu_kernel(iter, [inv_b] GPU_LAMBDA (scalar_t a) -> scalar_t {
+-        return std::trunc(a * inv_b);
++        return trunc_(a * inv_b);
+       });
+     });
+   } else {
+     AT_DISPATCH_FLOATING_TYPES_AND2(kHalf, kBFloat16, dtype, "div_trunc_cuda", [&]() {
+       gpu_kernel_with_scalars(iter, [] GPU_LAMBDA (scalar_t a, scalar_t b) -> scalar_t {
+-        return std::trunc(a / b);
++        return trunc_(a / b);
+       });
+     });
+   }
+@@ -134,12 +134,12 @@ void div_floor_kernel_cuda(TensorIterator& iter) {
+ 
+         scalar_t floordiv;
+         if (div != 0) {
+-          floordiv = std::floor(div);
++          floordiv = floor_(div);
+           if (div - floordiv > scalar_t(0.5)) {
+             floordiv += scalar_t(1.0);
+           }
+         } else {
+-          floordiv = std::copysign(scalar_t(0), a * inv_b);
++          floordiv = copysign_(scalar_t(0), a * inv_b);
+         }
+         return floordiv;
+       });
+@@ -155,12 +155,12 @@ void div_floor_kernel_cuda(TensorIterator& iter) {
+ 
+         scalar_t floordiv;
+         if (div != 0) {
+-          floordiv = std::floor(div);
++          floordiv = floor_(div);
+           if (div - floordiv > scalar_t(0.5)) {
+             floordiv += scalar_t(1.0);
+           }
+         } else {
+-          floordiv = std::copysign(scalar_t(0), a / b);
++          floordiv = copysign_(scalar_t(0), a / b);
+         }
+         return floordiv;
+       });
+--- a/aten/src/ATen/native/cuda/Math.cuh
++++ b/aten/src/ATen/native/cuda/Math.cuh
+@@ -2,6 +2,7 @@
+ 
+ #include <ATen/AccumulateType.h>
+ #include <c10/macros/Macros.h>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ namespace at {
+ namespace native {
+@@ -111,7 +112,7 @@ static inline __host__ __device__ scalar_t calc_digamma(scalar_t in) {
+   if (x == 0) {
+     // As per C++ standard for gamma related functions and SciPy,
+     // If the argument is ±0, ±∞ is returned
+-    return std::copysign(static_cast<scalar_t>(INFINITY), -x);
++    return copysign_(static_cast<scalar_t>(INFINITY), -x);
+   }
+ 
+   bool x_is_integer = x == ::trunc(x);
+--- a/aten/src/ATen/native/cuda/RangeFactories.cu
++++ b/aten/src/ATen/native/cuda/RangeFactories.cu
+@@ -5,6 +5,7 @@
+ #include <ATen/cuda/Exceptions.h>
+ #include <ATen/cuda/CUDAContext.h>
+ #include <ATen/detail/FunctionTraits.h>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ #include <cmath>
+ #include <limits>
+ 
+@@ -220,10 +221,10 @@ Tensor& arange_cuda_out(Tensor& result, Scalar start, Scalar end, Scalar step) {
+     // the corner-case we do want to take into account is int64_t, which has higher precision than double
+     double size_d;
+     if (std::is_same<scalar_t, int64_t>::value) {
+-      size_d = std::ceil(static_cast<double>(end.to<accscalar_t>() - start.to<accscalar_t>())
++      size_d = ceil_(static_cast<double>(end.to<accscalar_t>() - start.to<accscalar_t>())
+                           / step.to<accscalar_t>());
+     } else {
+-      size_d = std::ceil(static_cast<double>(end.to<double>() - start.to<double>())
++      size_d = ceil_(static_cast<double>(end.to<double>() - start.to<double>())
+                           / step.to<double>());
+     }
+ 
+--- a/aten/src/ATen/native/cuda/ReflectionPad.cu
++++ b/aten/src/ATen/native/cuda/ReflectionPad.cu
+@@ -4,6 +4,7 @@
+ #include <ATen/NativeFunctions.h>
+ #include <ATen/TensorUtils.h>
+ #include <ATen/Utils.h>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ // keeping THC headers for gpuAtomicAdd
+ #include <THC/THCAtomics.cuh>
+ 
+@@ -320,7 +321,7 @@ void reflection_pad2d_out_template(
+   int output_plane_size = output_h * output_w;
+   dim3 block_size(output_plane_size > 256 ? 256 : output_plane_size);
+   dim3 grid_size(
+-    (int) std::ceil(output_plane_size/256.0), nplane, nbatch);
++    (int) ceil_(output_plane_size/256.0), nplane, nbatch);
+ 
+   AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND1(kHalf,
+     input.scalar_type(), "reflection_pad2d_out_template", [&] {
+@@ -381,7 +382,7 @@ void reflection_pad2d_backward_out_template(
+   int output_plane_size = output_h * output_w;
+   dim3 block_size(output_plane_size > 256 ? 256 : output_plane_size);
+   dim3 grid_size(
+-    (int) std::ceil(output_plane_size/256.0), nplane, nbatch);
++    (int) ceil_(output_plane_size/256.0), nplane, nbatch);
+ 
+   AT_DISPATCH_FLOATING_AND_COMPLEX_TYPES_AND1(kHalf,
+     input.scalar_type(), "reflection_pad2d_backward_out_template", [&] {
+--- a/aten/src/ATen/native/cuda/UnaryFractionKernels.cu
++++ b/aten/src/ATen/native/cuda/UnaryFractionKernels.cu
+@@ -7,18 +7,19 @@
+ #include <ATen/native/DispatchStub.h>
+ #include <ATen/native/TensorIterator.h>
+ #include <ATen/native/cuda/Math.cuh>
++#include <ATen/native/cuda/fix_vc_14.28.cuh>
+ 
+ namespace at { namespace native {
+ 
+ // We manually overload ceil because std::ceil does not work with std::complex types.
+ template <typename scalar_t>
+ __host__ __device__ static inline scalar_t ceil_wrapper(scalar_t a) {
+-  return std::ceil(a);
++  return ceil_(a);
+ }
+ 
+ template<typename T>
+ __host__ __device__ static inline std::complex<T> ceil_wrapper(std::complex<T> v) {
+-  return std::complex<T>(std::ceil(v.real()), std::ceil(v.imag()));
++  return std::complex<T>(ceil_(v.real()), ceil_(v.imag()));
+ }
+ 
+ void ceil_kernel_cuda(TensorIterator& iter) {
+@@ -40,12 +41,12 @@ void frac_kernel_cuda(TensorIterator& iter) {
+ // We manually overload floor because std::floor does not work with std::complex types.
+ template <typename scalar_t>
+ __host__ __device__ static inline scalar_t floor_wrapper(scalar_t a) {
+-  return std::floor(a);
++  return floor_(a);
+ }
+ 
+ template<typename T>
+ __host__ __device__ static inline std::complex<T> floor_wrapper(std::complex<T> v) {
+-  return std::complex<T>(std::floor(v.real()), std::floor(v.imag()));
++  return std::complex<T>(floor_(v.real()), floor_(v.imag()));
+ }
+ 
+ void floor_kernel_cuda(TensorIterator& iter) {
+--- /dev/null
++++ b/aten/src/ATen/native/cuda/fix_vc_14.28.cuh
+@@ -0,0 +1,52 @@
++#pragma once
++
++#include <cmath>
++#include <type_traits>
++
++#if defined(_MSC_VER) && _MSC_VER >= 1928
++template <typename scalar_t>
++static inline __host__ __device__ typename std::enable_if<!std::is_same<scalar_t, double>::value, scalar_t>::type
++ceil_(scalar_t a) {
++  return std::ceilf(static_cast<float>(a));
++}
++template <typename scalar_t>
++static inline __host__ __device__ typename std::enable_if<std::is_same<scalar_t, double>::value, scalar_t>::type
++ceil_(scalar_t a) {
++  return std::ceil(a);
++}
++template <typename scalar_t>
++static inline __host__ __device__ typename std::enable_if<!std::is_same<scalar_t, double>::value, scalar_t>::type
++floor_(scalar_t a) {
++  return std::floorf(static_cast<float>(a));
++}
++template <typename scalar_t>
++static inline __host__ __device__ typename std::enable_if<std::is_same<scalar_t, double>::value, scalar_t>::type
++floor_(scalar_t a) {
++  return std::floor(a);
++}
++template <typename scalar_t>
++static inline __host__ __device__ typename std::enable_if<!std::is_same<scalar_t, double>::value, scalar_t>::type
++trunc_(scalar_t a) {
++  return std::truncf(static_cast<float>(a));
++}
++template <typename scalar_t>
++static inline __host__ __device__ typename std::enable_if<std::is_same<scalar_t, double>::value, scalar_t>::type
++trunc_(scalar_t a) {
++  return std::trunc(a);
++}
++template <typename scalar_t1, typename scalar_t2>
++static inline __host__ __device__ typename std::enable_if<!std::is_same<scalar_t1, double>::value && !std::is_same<scalar_t2, double>::value, scalar_t1>::type
++copysign_(scalar_t1 a, scalar_t2 b) {
++  return std::copysignf(static_cast<float>(a), static_cast<float>(b));
++}
++template <typename scalar_t1, typename scalar_t2>
++static inline __host__ __device__ typename std::enable_if<std::is_same<scalar_t1, double>::value || std::is_same<scalar_t2, double>::value, scalar_t1>::type
++copysign_(scalar_t1 a, scalar_t2 b) {
++  return std::copysign(static_cast<double>(a), static_cast<double>(b));
++}
++#else
++#define ceil_ std::ceil
++#define floor_ std::floor
++#define trunc_ std::trunc
++#define copysign_ std::copysign
++#endif
+--- a/c10/util/BFloat16-math.h
++++ b/c10/util/BFloat16-math.h
+@@ -17,14 +17,11 @@ inline c10::BFloat16 log(c10::BFloat16 a) { return std::log(float(a));}
+ inline c10::BFloat16 log10(c10::BFloat16 a) { return std::log10(float(a));}
+ inline c10::BFloat16 log1p(c10::BFloat16 a) { return std::log1p(float(a));}
+ inline c10::BFloat16 log2(c10::BFloat16 a) { return std::log2(float(a));}
+-inline c10::BFloat16 ceil(c10::BFloat16 a) { return std::ceil(float(a));}
+ inline c10::BFloat16 cos(c10::BFloat16 a) { return std::cos(float(a));}
+-inline c10::BFloat16 floor(c10::BFloat16 a) { return std::floor(float(a));}
+ inline c10::BFloat16 nearbyint(c10::BFloat16 a) { return std::nearbyint(float(a));}
+ inline c10::BFloat16 sin(c10::BFloat16 a) { return std::sin(float(a));}
+ inline c10::BFloat16 tan(c10::BFloat16 a) { return std::tan(float(a));}
+ inline c10::BFloat16 tanh(c10::BFloat16 a) { return std::tanh(float(a));}
+-inline c10::BFloat16 trunc(c10::BFloat16 a) { return std::trunc(float(a));}
+ inline c10::BFloat16 lgamma(c10::BFloat16 a) { return std::lgamma(float(a));}
+ inline c10::BFloat16 sqrt(c10::BFloat16 a) { return std::sqrt(float(a));}
+ inline c10::BFloat16 rsqrt(c10::BFloat16 a) { return 1.0 / std::sqrt(float(a));}
+@@ -36,6 +33,15 @@ inline c10::BFloat16 pow(c10::BFloat16 a, double b) { return std::pow(float(a),
+ #else
+ inline c10::BFloat16 pow(c10::BFloat16 a, double b) { return std::pow(float(a), b);}
+ #endif
++#if defined(_MSC_VER) && _MSC_VER >= 1928 && defined(__CUDACC__)
++inline c10::BFloat16 ceil(c10::BFloat16 a) { return std::ceilf(float(a));}
++inline c10::BFloat16 floor(c10::BFloat16 a) { return std::floorf(float(a));}
++inline c10::BFloat16 trunc(c10::BFloat16 a) { return std::truncf(float(a));}
++#else
++inline c10::BFloat16 ceil(c10::BFloat16 a) { return std::ceil(float(a));}
++inline c10::BFloat16 floor(c10::BFloat16 a) { return std::floor(float(a));}
++inline c10::BFloat16 trunc(c10::BFloat16 a) { return std::trunc(float(a));}
++#endif
+ inline c10::BFloat16 pow(c10::BFloat16 a, c10::BFloat16 b) { return std::pow(float(a), float(b));}
+ inline c10::BFloat16 fmod(c10::BFloat16 a, c10::BFloat16 b) { return std::fmod(float(a), float(b));}
+ 
