@@ -243,7 +243,7 @@ class LibtorchConan(ConanFile):
         if self.options.get_safe("with_gloo"):
             raise ConanInvalidConfiguration("gloo recipe not yet available in CCI")
         if self.options.get_safe("with_tensorpipe"):
-            self.requires("tensorpipe/cci.20210309")
+            self.requires("tensorpipe/cci.20210316")
 
     @property
     def _depends_on_sleef(self):
