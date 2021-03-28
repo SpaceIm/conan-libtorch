@@ -4,7 +4,7 @@ project(cmake_wrapper)
 include(conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
-find_package(Python 3.6.2 REQUIRED)
+find_package(Python 3.8.0 REQUIRED)
 set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 
 find_package(Eigen3 REQUIRED)
