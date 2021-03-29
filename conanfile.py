@@ -58,6 +58,7 @@ class LibtorchConan(ConanFile):
         "with_mpi": [True, False],
         "with_gloo": [True, False],
         "with_tensorpipe": [True, False],
+        "utilities": [True, False],
     }
     default_options = {
         "shared": False,
@@ -100,6 +101,7 @@ class LibtorchConan(ConanFile):
         "with_mpi": True,
         "with_gloo": False, # TODO: should be True
         "with_tensorpipe": True,
+        "utilities": False,
     }
 
     short_paths = True
@@ -279,7 +281,7 @@ class LibtorchConan(ConanFile):
             return self._cmake
         self._cmake = CMake(self)
         self._cmake.definitions["ATEN_NO_TEST"] = True
-        self._cmake.definitions["BUILD_BINARY"] = True
+        self._cmake.definitions["BUILD_BINARY"] = self.options.utilities
         self._cmake.definitions["BUILD_DOCS"] = False
         self._cmake.definitions["BUILD_CUSTOM_PROTOBUF"] = False
         self._cmake.definitions["BUILD_PYTHON"] = False
@@ -651,6 +653,7 @@ class LibtorchConan(ConanFile):
             ])
             self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_pytorch_qnnpack")
 
-        bin_path = os.path.join(self.package_folder, "bin")
-        self.output.info("Appending PATH environment variable: {}".format(bin_path))
-        self.env_info.PATH.append(bin_path)
+        if self.options.utilities:
+            bin_path = os.path.join(self.package_folder, "bin")
+            self.output.info("Appending PATH environment variable: {}".format(bin_path))
+            self.env_info.PATH.append(bin_path)
