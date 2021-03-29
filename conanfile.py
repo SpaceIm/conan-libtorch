@@ -98,7 +98,7 @@ class LibtorchConan(ConanFile):
         "with_zstd": False,
         "with_mkldnn": False,
         "distributed": True,
-        "with_mpi": True,
+        "with_mpi": False, # TODO: should be True (link errors, package_info of openmpi recipe is likely broken)
         "with_gloo": False, # TODO: should be True
         "with_tensorpipe": True,
         "utilities": False,
@@ -452,7 +452,7 @@ class LibtorchConan(ConanFile):
                     whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(lib_fullpath)
                 elif self.settings.compiler in ["clang", "apple-clang"]:
                     lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
-                    whole_archive = "-Wl,-force_load {}".format(lib_fullpath)
+                    whole_archive = "-Wl,-force_load,{}".format(lib_fullpath)
                 else:
                     whole_archive = "-l{}".format(libname)
                 self.cpp_info.components[component].exelinkflags.append(whole_archive)
@@ -539,8 +539,7 @@ class LibtorchConan(ConanFile):
         _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
         self.cpp_info.components["libtorch_cpu"].requires.extend(
             ["libtorch_c10", "cpuinfo::cpuinfo", "eigen::eigen", "foxi::foxi"] +
-            _openblas() + _gloo() + _onednn() + _sleef() + _leveldb() +
-            _openmpi() + _gloo()
+            _openblas() + _onednn() + _sleef() + _leveldb() + _openmpi() + _gloo()
         )
         if self.settings.os == "Linux":
             self.cpp_info.components["libtorch_cpu"].system_libs.extend(["dl", "m", "pthread", "rt"])
@@ -561,11 +560,9 @@ class LibtorchConan(ConanFile):
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
-        self.cpp_info.components["libtorch_c10"].requires.extend([
-            "fmt::fmt", "onnx::onnx"]
-        )
+        self.cpp_info.components["libtorch_c10"].requires.extend(["fmt::fmt", "onnx::onnx"])
         self.cpp_info.components["libtorch_c10"].requires.extend(
-            _sleef() + _openblas() + _tbb() + _fbgemm() + _ffmpeg() +
+            _tbb() + _fbgemm() + _ffmpeg() +
             _nnpack() + _xnnpack() + _pthreadpool() +
             _opencl() + _opencv() + _redis() + _rocksdb() + _vulkan() + _shaderc() +
             _zeromq() + _zstd() + _onednn() + _tensorpipe()
