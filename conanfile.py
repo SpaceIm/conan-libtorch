@@ -169,6 +169,12 @@ class LibtorchConan(ConanFile):
         if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
             self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
 
+        # numa static can't be linked into shared libs.
+        # Because Caffe2_detectron_ops* libs are always shared, we have to force
+        # libnuma shared even if libtorch:shared=False
+        if self.options.get_safe("with_numa"):
+            self.options["libnuma"].shared = True
+
     def requirements(self):
         self.requires("cpuinfo/cci.20201217")
         self.requires("eigen/3.3.9")
@@ -248,6 +254,11 @@ class LibtorchConan(ConanFile):
     @property
     def _depends_on_sleef(self):
         return self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]
+
+    def validate(self):
+        if self.options.get_safe("with_numa") and not self.options["libnuma"].shared:
+            raise ConanInvalidConfiguration("libtorch requires libnuma shared. Set libnuma:shared=True, or disable " \
+                                            "numa with libtorch:with_numa=False")
 
     def build_requirements(self):
         # FIXME: libtorch 1.8.0 requires:
