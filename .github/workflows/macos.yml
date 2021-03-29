@@ -7,12 +7,12 @@ jobs:
       fail-fast: false
       matrix:
         compiler:
-        - { name: "APPLE_CLANG", xcode: "10.3", version: "10.0", buildType: "Debug"   }
-        - { name: "APPLE_CLANG", xcode: "10.3", version: "10.0", buildType: "Release" }
-        - { name: "APPLE_CLANG", xcode: "11.7", version: "11.0", buildType: "Debug"     }
-        - { name: "APPLE_CLANG", xcode: "11.7", version: "11.0", buildType: "Release"   }
-        - { name: "APPLE_CLANG", xcode: "12.4", version: "12.0", buildType: "Debug"     }
-        - { name: "APPLE_CLANG", xcode: "12.4", version: "12.0", buildType: "Release"   }
+        - { name: "APPLE_CLANG", xcodeVersion: "10.3", version: "10.0", buildType: "Debug"   }
+        - { name: "APPLE_CLANG", xcodeVersion: "10.3", version: "10.0", buildType: "Release" }
+        - { name: "APPLE_CLANG", xcodeVersion: "11.7", version: "11.0", buildType: "Debug"     }
+        - { name: "APPLE_CLANG", xcodeVersion: "11.7", version: "11.0", buildType: "Release"   }
+        - { name: "APPLE_CLANG", xcodeVersion: "12.4", version: "12.0", buildType: "Debug"     }
+        - { name: "APPLE_CLANG", xcodeVersion: "12.4", version: "12.0", buildType: "Release"   }
     name: ${{ matrix.compiler.name }} ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
     # if: ${{ env.SPLIT_BY_BUILD_TYPE }} == 'true'
     steps:
@@ -22,7 +22,7 @@ jobs:
           python-version: '3.9.2'
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: ${{ matrix.compiler.version }}
+          xcode-version: ${{ matrix.compiler.xcodeVersion }}
       - name: Install Conan
         run: |
           pip install bincrafters_package_tools
