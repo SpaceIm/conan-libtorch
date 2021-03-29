@@ -7,12 +7,12 @@ jobs:
       fail-fast: false
       matrix:
         compiler:
-        - { name: "APPLE_CLANG", xcodeVersion: "10.3", version: "10.0", buildType: "Debug"   }
-        - { name: "APPLE_CLANG", xcodeVersion: "10.3", version: "10.0", buildType: "Release" }
-        - { name: "APPLE_CLANG", xcodeVersion: "11.7", version: "11.0", buildType: "Debug"     }
-        - { name: "APPLE_CLANG", xcodeVersion: "11.7", version: "11.0", buildType: "Release"   }
-        - { name: "APPLE_CLANG", xcodeVersion: "12.4", version: "12.0", buildType: "Debug"     }
-        - { name: "APPLE_CLANG", xcodeVersion: "12.4", version: "12.0", buildType: "Release"   }
+        - { name: "APPLE_CLANG", version: "10.3", versionForConan: "10.0", buildType: "Debug"   }
+        - { name: "APPLE_CLANG", version: "10.3", versionForConan: "10.0", buildType: "Release" }
+        - { name: "APPLE_CLANG", version: "11.7", versionForConan: "11.0", buildType: "Debug"     }
+        - { name: "APPLE_CLANG", version: "11.7", versionForConan: "11.0", buildType: "Release"   }
+        - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Debug"     }
+        - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Release"   }
     name: ${{ matrix.compiler.name }} ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
     # if: ${{ env.SPLIT_BY_BUILD_TYPE }} == 'true'
     steps:
@@ -20,17 +20,17 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.9.2'
-      - uses: maxim-lobanov/setup-xcode@v1
+      - uses: maxim-lobanov/setup-xcode@v1.2.1
         with:
-          xcode-version: ${{ matrix.compiler.xcodeVersion }}
+          xcode-version: ${{ matrix.compiler.version }}
       - name: Install Conan
         run: |
           pip install bincrafters_package_tools
-          pip3 install pyyaml
           conan user
       - name: Run
         env:
           CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
         run: |
-          export CONAN_${{ matrix.compiler.name }}_VERSIONS="${{ matrix.compiler.version }}"
+          pip install pyyaml
+          export CONAN_${{ matrix.compiler.name }}_VERSIONS="${{ matrix.compiler.versionForConan }}"
           python build.py
