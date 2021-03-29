@@ -9,10 +9,10 @@ jobs:
         compiler:
         - { name: "APPLE_CLANG", version: "10.3", versionForConan: "10.0", buildType: "Debug"   }
         - { name: "APPLE_CLANG", version: "10.3", versionForConan: "10.0", buildType: "Release" }
-        - { name: "APPLE_CLANG", version: "11.7", versionForConan: "11.0", buildType: "Debug"     }
-        - { name: "APPLE_CLANG", version: "11.7", versionForConan: "11.0", buildType: "Release"   }
-        - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Debug"     }
-        - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Release"   }
+        - { name: "APPLE_CLANG", version: "11.7", versionForConan: "11.0", buildType: "Debug"   }
+        - { name: "APPLE_CLANG", version: "11.7", versionForConan: "11.0", buildType: "Release" }
+        - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Debug"   }
+        - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Release" }
     name: ${{ matrix.compiler.name }} ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
     steps:
       - uses: actions/checkout@v2

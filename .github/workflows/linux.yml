@@ -2,37 +2,27 @@ on: [push, pull_request]
 
 jobs:
   splitByBuildTypesTrue:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         compiler:
-        - { name: "GCC", version: "4.9", buildType: "Debug"     }
-        - { name: "GCC", version: "4.9", buildType: "Release"   }
-        - { name: "GCC", version: "5", buildType: "Debug"       }
-        - { name: "GCC", version: "5", buildType: "Release"     }
-        - { name: "GCC", version: "6", buildType: "Debug"       }
-        - { name: "GCC", version: "6", buildType: "Release"     }
-        - { name: "GCC", version: "7", buildType: "Debug"       }
-        - { name: "GCC", version: "7", buildType: "Release"     }
-        - { name: "GCC", version: "8", buildType: "Debug"       }
-        - { name: "GCC", version: "8", buildType: "Release"     }
-        - { name: "GCC", version: "9", buildType: "Debug"       }
-        - { name: "GCC", version: "9", buildType: "Release"     }
-        - { name: "CLANG", version: "3.9", buildType: "Debug"   }
-        - { name: "CLANG", version: "3.9", buildType: "Release" }
-        - { name: "CLANG", version: "4.0", buildType: "Debug"   }
-        - { name: "CLANG", version: "4.0", buildType: "Release" }
-        - { name: "CLANG", version: "5.0", buildType: "Debug"   }
-        - { name: "CLANG", version: "5.0", buildType: "Release" }
-        - { name: "CLANG", version: "6.0", buildType: "Debug"   }
-        - { name: "CLANG", version: "6.0", buildType: "Release" }
-        - { name: "CLANG", version: "7.0", buildType: "Debug"   }
-        - { name: "CLANG", version: "7.0", buildType: "Release" }
-        - { name: "CLANG", version: "8", buildType: "Debug"     }
-        - { name: "CLANG", version: "8", buildType: "Release"   }
-        - { name: "CLANG", version: "9", buildType: "Debug"     }
-        - { name: "CLANG", version: "9", buildType: "Release"   }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "7",  buildType: "Debug"   }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "7",  buildType: "Release" }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "8",  buildType: "Debug"   }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "8",  buildType: "Release" }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "9",  buildType: "Debug"   }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "9",  buildType: "Release" }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "10", buildType: "Debug"   }
+        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "10", buildType: "Release" }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "8",  buildType: "Debug"   }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "8",  buildType: "Release" }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "9",  buildType: "Debug"   }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "9",  buildType: "Release" }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "10", buildType: "Debug"   }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "10", buildType: "Release" }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "11", buildType: "Debug"   }
+        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "11", buildType: "Release" }
     name: ${{ matrix.compiler.name }} ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
     steps:
       - uses: actions/checkout@v2
@@ -41,16 +31,14 @@ jobs:
           python-version: '3.9.2'
       - name: Install Conan
         run: |
-          python -m pip install --upgrade pip
           pip install bincrafters_package_tools
           conan user
       - name: Run
         env:
-          CONAN_USE_DOCKER: 1
-          CONAN_LOGIN_USERNAME: ${{ secrets.CONAN_LOGIN_USERNAME }}
-          CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
           CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
           CONAN_SYSREQUIRES_MODE: enabled
+          CC: ${{ matrix.cc }}-${{ matrix.version }}
+          CXX: ${{ matrix.cxx }}-${{ matrix.version }}
         run: |
           export CONAN_${{ matrix.compiler.name }}_VERSIONS="${{ matrix.compiler.version }}"
           python build.py

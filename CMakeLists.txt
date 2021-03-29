@@ -6,6 +6,7 @@ conan_basic_setup(TARGETS)
 
 #-----------------------------
 # Workaround for github action
+# see https://github.com/actions/setup-python/issues/121#issuecomment-777748504
 if (POLICY CMP0094)
     cmake_policy(SET CMP0094 NEW)
 endif ()
