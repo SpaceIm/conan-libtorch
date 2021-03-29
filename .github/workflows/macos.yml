@@ -25,12 +25,13 @@ jobs:
           xcode-version: ${{ matrix.compiler.version }}
       - name: Install Conan
         run: |
+          python -m pip install --upgrade pip
           pip install bincrafters_package_tools
+          pip install pyyaml
           conan user
       - name: Run
         env:
           CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
         run: |
-          pip install pyyaml
           export CONAN_${{ matrix.compiler.name }}_VERSIONS="${{ matrix.compiler.versionForConan }}"
           python build.py
