@@ -452,7 +452,7 @@ class LibtorchConan(ConanFile):
                     whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(lib_fullpath)
                 elif self.settings.compiler in ["clang", "apple-clang"]:
                     lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
-                    whole_archive = "-Wl,-force_load,{}".format(lib_fullpath)
+                    whole_archive = "-Wl,-force_load {}".format(lib_fullpath)
                 else:
                     whole_archive = "-l{}".format(libname)
                 self.cpp_info.components[component].exelinkflags.append(whole_archive)
