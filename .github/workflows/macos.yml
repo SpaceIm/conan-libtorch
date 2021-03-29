@@ -14,7 +14,6 @@ jobs:
         - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Debug"     }
         - { name: "APPLE_CLANG", version: "12.4", versionForConan: "12.0", buildType: "Release"   }
     name: ${{ matrix.compiler.name }} ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
-    # if: ${{ env.SPLIT_BY_BUILD_TYPE }} == 'true'
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -25,9 +24,7 @@ jobs:
           xcode-version: ${{ matrix.compiler.version }}
       - name: Install Conan
         run: |
-          python -m pip install --upgrade pip
           pip install bincrafters_package_tools
-          pip install pyyaml
           conan user
       - name: Run
         env:

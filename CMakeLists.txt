@@ -4,6 +4,19 @@ project(cmake_wrapper)
 include(conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
 
+#-----------------------------
+# Workaround for github action
+if (POLICY CMP0094)
+    cmake_policy(SET CMP0094 NEW)
+endif ()
+if (NOT DEFINED Python_FIND_REGISTRY)
+    set(Python_FIND_REGISTRY "LAST")
+endif ()
+if (NOT DEFINED Python_FIND_FRAMEWORK)
+    set(Python_FIND_FRAMEWORK "LAST")
+endif ()
+#-----------------------------
+
 find_package(Python 3.8.0 REQUIRED)
 set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 
