@@ -539,7 +539,8 @@ class LibtorchConan(ConanFile):
         _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
         self.cpp_info.components["libtorch_cpu"].requires.extend(
             ["libtorch_c10", "cpuinfo::cpuinfo", "eigen::eigen", "foxi::foxi"] +
-            _openblas() + _gloo() + _onednn() + _sleef() + _leveldb()
+            _openblas() + _gloo() + _onednn() + _sleef() + _leveldb() +
+            _openmpi() + _gloo()
         )
         if self.settings.os == "Linux":
             self.cpp_info.components["libtorch_cpu"].system_libs.extend(["dl", "m", "pthread", "rt"])
