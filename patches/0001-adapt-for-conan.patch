@@ -65,7 +65,7 @@ index 486724d180..eb87a1a2d3 100644
    list(APPEND ATen_CPU_DEPENDENCY_LIBS sleef)
  
 diff --git a/c10/CMakeLists.txt b/c10/CMakeLists.txt
-index b175e5bdd6..55bbdba767 100644
+index b175e5bdd6..63382626fd 100644
 --- a/c10/CMakeLists.txt
 +++ b/c10/CMakeLists.txt
 @@ -73,8 +73,7 @@ if(USE_NUMA)
@@ -137,7 +137,7 @@ index 6a0e0e41a1..424099c56e 100644
          DESTINATION include
          FILES_MATCHING PATTERN "*.h")
 diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
-index 7bef849c08..287c1b7fbf 100644
+index 7bef849c08..800ed7dd7d 100644
 --- a/caffe2/CMakeLists.txt
 +++ b/caffe2/CMakeLists.txt
 @@ -60,7 +60,7 @@ if(INTERN_BUILD_ATEN_OPS)
@@ -283,6 +283,15 @@ index 7bef849c08..287c1b7fbf 100644
    endif()
  endif()
  
+@@ -1362,7 +1384,7 @@ if(BUILD_SHARED_LIBS)
+   endif()
+   set_target_properties(torch_global_deps PROPERTIES LINKER_LANGUAGE C)
+   if(USE_MPI)
+-      target_link_libraries(torch_global_deps ${MPI_CXX_LIBRARIES})
++      target_link_libraries(torch_global_deps CONAN_PKG::openmpi)
+   endif()
+   target_link_libraries(torch_global_deps ${MKL_LIBRARIES})
+   # The CUDA libraries are linked here for a different reason: in some
 diff --git a/caffe2/perfkernels/CMakeLists.txt b/caffe2/perfkernels/CMakeLists.txt
 index 1fe8bca697..2fa168fd0e 100644
 --- a/caffe2/perfkernels/CMakeLists.txt
@@ -325,7 +334,7 @@ index a9d2e4f50e..a8bd3a2a94 100644
    configure_file(
        ${PROJECT_SOURCE_DIR}/tools/build_variables.bzl
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index 06464e799a..7b52345dd8 100644
+index 06464e799a..505f73bc95 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
 @@ -82,7 +82,7 @@ else()
@@ -408,7 +417,17 @@ index 06464e799a..7b52345dd8 100644
  
  # ---[ MPI
  if(USE_MPI)
-@@ -1349,9 +1342,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
+@@ -1023,8 +1016,7 @@ if(USE_MPI)
+     message(STATUS "MPI include path: " ${MPI_CXX_INCLUDE_PATH})
+     message(STATUS "MPI LINK flags path: " ${MPI_CXX_LINK_FLAGS})
+     message(STATUS "MPI libraries: " ${MPI_CXX_LIBRARIES})
+-    include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
+-    list(APPEND Caffe2_DEPENDENCY_LIBS ${MPI_CXX_LIBRARIES})
++    list(APPEND Caffe2_DEPENDENCY_LIBS CONAN_PKG::openmpi)
+     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LINK_FLAGS}")
+     find_program(OMPI_INFO
+       NAMES ompi_info
+@@ -1349,9 +1341,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
      set(TP_BUILD_LIBUV ON CACHE BOOL "" FORCE)
      set(TP_STATIC_OR_SHARED STATIC CACHE STRING "" FORCE)
  
@@ -419,7 +438,7 @@ index 06464e799a..7b52345dd8 100644
    endif()
  endif()
  
-@@ -1431,7 +1423,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1431,7 +1422,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
    if(NOT USE_SYSTEM_ONNX)
      add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/onnx EXCLUDE_FROM_ALL)
    endif()
@@ -427,7 +446,7 @@ index 06464e799a..7b52345dd8 100644
  
    add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
    if(NOT USE_SYSTEM_ONNX)
-@@ -1445,23 +1436,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1445,23 +1435,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
      endif()
      list(APPEND Caffe2_DEPENDENCY_WHOLE_LINK_LIBS onnx_library)
    else()
@@ -453,7 +472,7 @@ index 06464e799a..7b52345dd8 100644
    # Recover the build shared libs option.
    set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
  endif()
-@@ -1661,8 +1640,9 @@ if(NOT INTERN_BUILD_MOBILE)
+@@ -1661,8 +1639,9 @@ if(NOT INTERN_BUILD_MOBILE)
        CACHE BOOL "Copy the required BLAS DLLs into the TH install dirs")
    endif()
  
@@ -465,7 +484,7 @@ index 06464e799a..7b52345dd8 100644
      set(USE_LAPACK 1)
      list(APPEND Caffe2_PRIVATE_DEPENDENCY_LIBS ${LAPACK_LIBRARIES})
    else()
-@@ -1776,7 +1756,6 @@ endif()
+@@ -1776,7 +1755,6 @@ endif()
  #
  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
@@ -473,7 +492,7 @@ index 06464e799a..7b52345dd8 100644
  
  # Disable compiler feature checks for `fmt`.
  #
-@@ -1785,9 +1764,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+@@ -1785,9 +1763,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
  # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
  # `fmt` is compatible with a superset of the compilers that PyTorch is, it
  # shouldn't be too bad to just disable the checks.
