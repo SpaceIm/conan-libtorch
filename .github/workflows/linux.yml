@@ -37,8 +37,8 @@ jobs:
         env:
           CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
           CONAN_SYSREQUIRES_MODE: enabled
-          CC: ${{ matrix.cc }}-${{ matrix.version }}
-          CXX: ${{ matrix.cxx }}-${{ matrix.version }}
+          CC: ${{ matrix.compiler.cc }}-${{ matrix.compiler.version }}
+          CXX: ${{ matrix.compiler.cxx }}-${{ matrix.compiler.version }}
         run: |
           export CONAN_${{ matrix.compiler.name }}_VERSIONS="${{ matrix.compiler.version }}"
           python build.py
