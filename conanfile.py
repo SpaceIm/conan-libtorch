@@ -403,6 +403,9 @@ class LibtorchConan(ConanFile):
             self.output.warn("with_snpe is enabled. Pay attention that you should have properly set SNPE_LOCATION and SNPE_HEADERS CMake variables")
         for patch in self.conan_data.get("patches", {}).get(self.version, []):
             tools.patch(**patch)
+        tools.replace_in_file(os.path.join(self._source_subfolder, "cmake", "MiscCheck.cmake"),
+                              "cmake_push_check_state(RESET)",
+                              "cmake_push_check_state()")
         # conflict with macros.h generated at build time
         os.remove(os.path.join(self.build_folder, self._source_subfolder, "caffe2", "core", "macros.h"))
         cmake = self._configure_cmake()
