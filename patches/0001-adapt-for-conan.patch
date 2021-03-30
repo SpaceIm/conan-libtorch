@@ -65,7 +65,7 @@ index 486724d180..eb87a1a2d3 100644
    list(APPEND ATen_CPU_DEPENDENCY_LIBS sleef)
  
 diff --git a/binaries/CMakeLists.txt b/binaries/CMakeLists.txt
-index 74df5089e4..0ef4dc582d 100644
+index 74df5089e4..c43e395d44 100644
 --- a/binaries/CMakeLists.txt
 +++ b/binaries/CMakeLists.txt
 @@ -70,7 +70,7 @@ endif()
@@ -82,16 +82,16 @@ index 74df5089e4..0ef4dc582d 100644
    target_link_libraries(
        convert_encoded_to_raw_leveldb
 -      ${OpenCV_LIBS} ${LevelDB_LIBRARIES} ${Snappy_LIBRARIES})
-+      ${OpenCV_LIBRARIES} CONAN_PKG::leveldb)
++      CONAN_PKG::opencv CONAN_PKG::leveldb)
  endif()
  
  if(USE_OPENCV)
    caffe2_binary_target("make_image_db.cc")
 -  target_link_libraries(make_image_db ${OpenCV_LIBS})
-+  target_link_libraries(make_image_db ${OpenCV_LIBRARIES})
++  target_link_libraries(make_image_db CONAN_PKG::opencv)
    caffe2_binary_target("convert_image_to_tensor.cc")
 -  target_link_libraries(convert_image_to_tensor ${OpenCV_LIBS})
-+  target_link_libraries(convert_image_to_tensor ${OpenCV_LIBRARIES})
++  target_link_libraries(convert_image_to_tensor CONAN_PKG::opencv)
  endif()
  
  if(USE_OBSERVERS)
@@ -100,7 +100,7 @@ index 74df5089e4..0ef4dc582d 100644
  if(USE_OBSERVERS AND USE_OPENCV)
    caffe2_binary_target("convert_and_benchmark.cc")
 -  target_link_libraries(convert_and_benchmark ${OpenCV_LIBS})
-+  target_link_libraries(convert_and_benchmark ${OpenCV_LIBRARIES})
++  target_link_libraries(convert_and_benchmark CONAN_PKG::opencv)
  endif()
  
  # ---[ tutorials
@@ -378,7 +378,7 @@ index a9d2e4f50e..a8bd3a2a94 100644
    configure_file(
        ${PROJECT_SOURCE_DIR}/tools/build_variables.bzl
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index 06464e799a..5a807da777 100644
+index 06464e799a..9b538bde23 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
 @@ -82,7 +82,7 @@ else()
@@ -502,19 +502,20 @@ index 06464e799a..5a807da777 100644
    else()
      message(WARNING "Not compiling with Redis. Suppress this warning with -DUSE_REDIS=OFF")
      caffe2_update_option(USE_REDIS OFF)
-@@ -826,9 +811,9 @@ if(USE_OPENCV)
+@@ -825,10 +810,9 @@ if(USE_OPENCV)
+     endif()
    endif()
    if(OpenCV_FOUND)
-     include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
+-    include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
 -    list(APPEND Caffe2_DEPENDENCY_LIBS ${OpenCV_LIBS})
-+    list(APPEND Caffe2_DEPENDENCY_LIBS ${OpenCV_LIBRARIES})
++    list(APPEND Caffe2_DEPENDENCY_LIBS CONAN_PKG::opencv)
      if(MSVC AND USE_CUDA)
 -        list(APPEND Caffe2_CUDA_DEPENDENCY_LIBS ${OpenCV_LIBS})
-+        list(APPEND Caffe2_CUDA_DEPENDENCY_LIBS ${OpenCV_LIBRARIES})
++        list(APPEND Caffe2_CUDA_DEPENDENCY_LIBS CONAN_PKG::opencv)
      endif()
      message(STATUS "OpenCV found (${OpenCV_CONFIG_PATH})")
    else()
-@@ -992,6 +977,7 @@ if(BUILD_PYTHON)
+@@ -992,6 +976,7 @@ if(BUILD_PYTHON)
  endif()
  
  # ---[ pybind11
@@ -522,7 +523,7 @@ index 06464e799a..5a807da777 100644
  if(NOT pybind11_PREFER_third_party)
    find_package(pybind11 CONFIG)
    if(NOT pybind11_FOUND)
-@@ -1013,6 +999,7 @@ else()
+@@ -1013,6 +998,7 @@ else()
  endif()
  message(STATUS "pybind11 include dirs: " "${pybind11_INCLUDE_DIRS}")
  include_directories(SYSTEM ${pybind11_INCLUDE_DIRS})
@@ -530,7 +531,7 @@ index 06464e799a..5a807da777 100644
  
  # ---[ MPI
  if(USE_MPI)
-@@ -1023,8 +1010,7 @@ if(USE_MPI)
+@@ -1023,8 +1009,7 @@ if(USE_MPI)
      message(STATUS "MPI include path: " ${MPI_CXX_INCLUDE_PATH})
      message(STATUS "MPI LINK flags path: " ${MPI_CXX_LINK_FLAGS})
      message(STATUS "MPI libraries: " ${MPI_CXX_LIBRARIES})
@@ -540,7 +541,7 @@ index 06464e799a..5a807da777 100644
      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LINK_FLAGS}")
      find_program(OMPI_INFO
        NAMES ompi_info
-@@ -1349,9 +1335,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
+@@ -1349,9 +1334,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
      set(TP_BUILD_LIBUV ON CACHE BOOL "" FORCE)
      set(TP_STATIC_OR_SHARED STATIC CACHE STRING "" FORCE)
  
@@ -551,7 +552,7 @@ index 06464e799a..5a807da777 100644
    endif()
  endif()
  
-@@ -1401,10 +1386,7 @@ if(NOT INTERN_BUILD_MOBILE AND BUILD_CAFFE2_OPS)
+@@ -1401,10 +1385,7 @@ if(NOT INTERN_BUILD_MOBILE AND BUILD_CAFFE2_OPS)
  endif()
  
  if(USE_ZSTD)
@@ -563,7 +564,7 @@ index 06464e799a..5a807da777 100644
  endif()
  
  # ---[ Onnx
-@@ -1431,7 +1413,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1431,7 +1412,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
    if(NOT USE_SYSTEM_ONNX)
      add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/onnx EXCLUDE_FROM_ALL)
    endif()
@@ -571,7 +572,7 @@ index 06464e799a..5a807da777 100644
  
    add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
    if(NOT USE_SYSTEM_ONNX)
-@@ -1445,23 +1426,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1445,23 +1425,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
      endif()
      list(APPEND Caffe2_DEPENDENCY_WHOLE_LINK_LIBS onnx_library)
    else()
@@ -597,7 +598,7 @@ index 06464e799a..5a807da777 100644
    # Recover the build shared libs option.
    set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
  endif()
-@@ -1661,8 +1630,9 @@ if(NOT INTERN_BUILD_MOBILE)
+@@ -1661,8 +1629,9 @@ if(NOT INTERN_BUILD_MOBILE)
        CACHE BOOL "Copy the required BLAS DLLs into the TH install dirs")
    endif()
  
@@ -609,7 +610,7 @@ index 06464e799a..5a807da777 100644
      set(USE_LAPACK 1)
      list(APPEND Caffe2_PRIVATE_DEPENDENCY_LIBS ${LAPACK_LIBRARIES})
    else()
-@@ -1776,7 +1746,6 @@ endif()
+@@ -1776,7 +1745,6 @@ endif()
  #
  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
@@ -617,7 +618,7 @@ index 06464e799a..5a807da777 100644
  
  # Disable compiler feature checks for `fmt`.
  #
-@@ -1785,9 +1754,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+@@ -1785,9 +1753,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
  # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
  # `fmt` is compatible with a superset of the compilers that PyTorch is, it
  # shouldn't be too bad to just disable the checks.
