@@ -171,8 +171,6 @@ class LibtorchConan(ConanFile):
             raise ConanInvalidConfiguration("libtorch video support with ffmpeg also requires opencv")
         if self.options.blas == "veclib" and not tools.is_apple_os(self.settings.os):
             raise ConanInvalidConfiguration("veclib only available on Apple family OS")
-        if self.settings.compiler == "clang" and not self.options.shared:
-            raise ConanInvalidConfiguration("clang can't consume libtorch static for the moment")
 
         if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
             self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
@@ -457,17 +455,15 @@ class LibtorchConan(ConanFile):
                 self.cpp_info.components[component].libs.append(libname)
             else:
                 lib_folder = os.path.join(self.package_folder, "lib")
-                if self.settings.compiler == "Visual Studio":
-                    lib_fullpath = os.path.join(lib_folder, "{}".format(libname))
-                    whole_archive = "\"/WHOLEARCHIVE:{}\"".format(lib_fullpath)
-                elif self.settings.compiler == "gcc":
-                    lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
-                    whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(lib_fullpath)
-                elif self.settings.compiler in ["clang", "apple-clang"]:
+                if self.settings.os == "Macos":
                     lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
                     whole_archive = "-Wl,-force_load,{}".format(lib_fullpath)
+                elif self.settings.compiler == "Visual Studio":
+                    lib_fullpath = os.path.join(lib_folder, "{}".format(libname))
+                    whole_archive = "\"/WHOLEARCHIVE:{}\"".format(lib_fullpath)
                 else:
-                    whole_archive = "-l{}".format(libname)
+                    lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
+                    whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(lib_fullpath)
                 self.cpp_info.components[component].exelinkflags.append(whole_archive)
                 self.cpp_info.components[component].sharedlinkflags.append(whole_archive)
 
