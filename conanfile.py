@@ -263,13 +263,14 @@ class LibtorchConan(ConanFile):
                                             "numa with libtorch:with_numa=False")
 
     def build_requirements(self):
+        if self.options.with_vulkan and not self.options.vulkan_shaderc_runtime:
+            self.build_requires("shaderc/2019.0")
         # FIXME: libtorch 1.8.0 requires:
         #  - python 3.6.2+ with pyyaml, dataclasses and typing_extensions libs
         #  or
         #  - python 3.7+ with pyyaml and typing_extensions libs
         #  or
         #  - python 3.8+ with pyyaml lib
-        pass
         # self.build_requires("cpython/3.9.1")
 
     def source(self):
@@ -503,9 +504,6 @@ class LibtorchConan(ConanFile):
         def _redis():
             return ["hiredis::hiredis"] if self.options.with_redis else []
 
-        def _rocksdb():
-            return ["rocksdb::rocksdb"] if self.options.with_rocksdb else []
-
         def _vulkan():
             return ["vulkan-headers::vulkan-headers", "vulkan-loader::vulkan-loader"] if self.options.with_vulkan else []
 
@@ -535,18 +533,19 @@ class LibtorchConan(ConanFile):
         self.cpp_info.components["_libtorch"].requires.append("libtorch_cpu")
 
         # torch_cpu
-        # TODO: see what's in Caffe2_PUBLIC_DEPENDENCY_LIBS, Caffe2_DEPENDENCY_WHOLE_LINK_LIBS, Caffe2_DEPENDENCY_LIBS for torch_cpu depencencies
         _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
         self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_c10")
 
-        # TODO: Eventually remove this workaround in the future
-        # We put all these external dependencies and system libs of torch_cpu in an empty component instead,
-        # due to "whole archive" trick. Indeed, with this trick, conan doesn't honor correct order
-        # per component (conan generators put exelinkerflags/sharedlinkflags after system libs and external libs)
+        ## TODO: Eventually remove this workaround in the future
+        ## We put all these external dependencies and system libs of torch_cpu in an empty component instead,
+        ## due to "whole archive" trick. Indeed, conan doesn't honor libs order per component we expect in this case
+        ## (conan generators put exelinkflags/sharedlinkflags after system/external libs)
         self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_cpu_link_order_workaround")
         self.cpp_info.components["libtorch_cpu_link_order_workaround"].requires.extend(
             ["cpuinfo::cpuinfo", "eigen::eigen", "foxi::foxi"] +
-            _openblas() + _onednn() + _sleef() + _leveldb() + _openmpi() + _gloo()
+            _openblas() + _onednn() + _sleef() + _leveldb() + _openmpi() +
+            _gloo() + _redis() + _zstd() + _tensorpipe() + _opencv() +
+            _vulkan() + _shaderc() + _zeromq() + _ffmpeg()
         )
         if self.settings.os == "Linux":
             self.cpp_info.components["libtorch_cpu_link_order_workaround"].system_libs.extend(["dl", "m", "pthread", "rt"])
@@ -561,29 +560,27 @@ class LibtorchConan(ConanFile):
         if self.settings.os == "Android":
             self.cpp_info.components["libtorch_c10"].system_libs.append("log")
 
-        #------------------
-        # FIXME: let's put all build modules, include dirs, external dependencies (except protobuf) and system/frameworks libs in c10 for the moment
+        ##------------------
+        ## FIXME: let's put all build modules, include dirs, external dependencies (except protobuf) and system/frameworks libs in c10 for the moment
         self.cpp_info.components["libtorch_c10"].builddirs.append(self._module_subfolder)
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
         self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
         self.cpp_info.components["libtorch_c10"].requires.extend(["fmt::fmt", "onnx::onnx"])
         self.cpp_info.components["libtorch_c10"].requires.extend(
-            _tbb() + _fbgemm() + _ffmpeg() +
-            _nnpack() + _xnnpack() + _pthreadpool() +
-            _opencl() + _opencv() + _redis() + _rocksdb() + _vulkan() + _shaderc() +
-            _zeromq() + _zstd() + _tensorpipe()
+            _tbb() + _fbgemm() + _nnpack() + _xnnpack() + _pthreadpool() +
+            _opencl()
         )
-        #------------------
+        ##------------------
 
         if self.options.shared:
-            # TODO: Eventually remove this workaround in the future
+            ## TODO: Eventually remove this workaround in the future
             self.cpp_info.components["libtorch_cpu_link_order_workaround"].requires.append("protobuf::protobuf")
         else:
             # caffe2_protos
             _add_whole_archive_lib("libtorch_caffe2_protos", "caffe2_protos")
             self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_caffe2_protos")
-            # TODO: Eventually remove this workaround in the future
+            ## TODO: Eventually remove this workaround in the future
             self.cpp_info.components["libtorch_caffe2_protos"].requires.append("libtorch_caffe2_protos_link_order_workaround")
             self.cpp_info.components["libtorch_caffe2_protos_link_order_workaround"].requires.append("protobuf::protobuf")
 
@@ -614,6 +611,13 @@ class LibtorchConan(ConanFile):
         if self.options.distributed:
             self.cpp_info.components["libtorch_c10d"].libs = ["c10d"] # always static
             self.cpp_info.components["libtorch_c10d"].requires.extend(["_libtorch"] + _openmpi() + _gloo())
+
+        # process_group_agent & tensorpipe_agent
+        if self.options.get_safe("with_tensorpipe"):
+            self.cpp_info.components["libtorch_process_group_agent"].libs = ["process_group_agent"]
+            self.cpp_info.components["libtorch_process_group_agent"].requires.extend(["_libtorch", "libtorch_c10d"])
+            self.cpp_info.components["libtorch_tensorpipe_agent"].libs = ["tensorpipe_agent"]
+            self.cpp_info.components["libtorch_tensorpipe_agent"].requires.extend(["_libtorch", "libtorch_c10d", "fmt::fmt"] + _tensorpipe())
 
         # caffe2_nvrtc
         if self.options.with_cuda or self.options.with_rocm:
@@ -660,6 +664,11 @@ class LibtorchConan(ConanFile):
                 "cpuinfo::cpuinfo", "fp16::fp16", "fxdiv::fxdiv", "psimd::psimd", "pthreadpool::pthreadpool"
             ])
             self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_pytorch_qnnpack")
+
+        # caffe2_rocksdb
+        if self.options.with_rocksdb:
+            self.cpp_info.components["libtorch_caffe2_rocksdb"].libs = ["caffe2_rocksdb"]
+            self.cpp_info.components["libtorch_caffe2_rocksdb"].requires.extend(["_libtorch", "rocksdb::rocksdb"])
 
         if self.options.utilities:
             bin_path = os.path.join(self.package_folder, "bin")
