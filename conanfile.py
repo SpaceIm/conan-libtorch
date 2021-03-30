@@ -26,6 +26,7 @@ class LibtorchConan(ConanFile):
         "with_cudnn": [True, False],
         "with_nvrtc": [True, False],
         "with_tensorrt": [True, False],
+        "with_kineto": [True, False],
         "with_rocm": [True, False],
         "with_nccl": [True, False],
         "with_fbgemm": [True, False],
@@ -69,6 +70,7 @@ class LibtorchConan(ConanFile):
         "with_cudnn": True,
         "with_nvrtc": False,
         "with_tensorrt": False,
+        "with_kineto": False, # TODO: should be True
         "with_rocm": False,
         "with_nccl": True,
         "with_fbgemm": False, # TODO: should be True
@@ -132,6 +134,7 @@ class LibtorchConan(ConanFile):
             del self.options.with_qnnpack
             del self.options.with_mpi
             del self.options.with_tensorpipe
+            del self.options.with_kineto
         if self.settings.os != "iOS":
             del self.options.with_metal
         if self.settings.os != "Android":
@@ -147,6 +150,7 @@ class LibtorchConan(ConanFile):
             del self.options.with_cudnn
             del self.options.with_nvrtc
             del self.options.with_tensorrt
+            del self.options.with_kineto
         if not (self.options.with_cuda or self.options.with_rocm):
             del self.options.with_nccl
         if not self.options.with_vulkan:
@@ -198,6 +202,8 @@ class LibtorchConan(ConanFile):
             self.output.warn("cudnn recipe not yet available in CCI, assuming that NVIDIA CuDNN is installed on your system")
         if self.options.get_safe("with_tensorrt"):
             self.output.warn("tensorrt recipe not yet available in CCI, assuming that NVIDIA TensorRT SDK is installed on your system")
+        if self.options.get_safe("with_kineto"):
+            raise ConanInvalidConfiguration("kineto recipe not yet available in CCI")
         if self.options.with_rocm:
             raise ConanInvalidConfiguration("rocm recipe not yet available in CCI")
         if self.options.with_fbgemm:
@@ -308,6 +314,7 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["USE_CUDNN"] = self.options.get_safe("with_cudnn", False)
         self._cmake.definitions["USE_STATIC_CUDNN"] = False
         self._cmake.definitions["USE_FBGEMM"] = self.options.with_fbgemm
+        self._cmake.definitions["USE_KINETO"] = self.options.get_safe("with_kineto", False)
         self._cmake.definitions["USE_FAKELOWP"] = self.options.get_safe("fakelowp", False)
         self._cmake.definitions["USE_FFMPEG"] = self.options.with_ffmpeg
         self._cmake.definitions["USE_GFLAGS"] = self.options.with_gflags
