@@ -378,7 +378,7 @@ index a9d2e4f50e..a8bd3a2a94 100644
    configure_file(
        ${PROJECT_SOURCE_DIR}/tools/build_variables.bzl
 diff --git a/cmake/Dependencies.cmake b/cmake/Dependencies.cmake
-index 06464e799a..0b9008c42b 100644
+index 06464e799a..5a807da777 100644
 --- a/cmake/Dependencies.cmake
 +++ b/cmake/Dependencies.cmake
 @@ -82,7 +82,7 @@ else()
@@ -446,23 +446,23 @@ index 06464e799a..0b9008c42b 100644
  endif()
  
  # ---[ gflags
-@@ -757,13 +750,9 @@ endif()
+@@ -757,13 +750,8 @@ endif()
  # ---[ LevelDB
  # ---[ Snappy
  if(USE_LEVELDB)
 -  find_package(LevelDB)
 -  find_package(Snappy)
-+  set(LEVELDB_FOUND 1)
-   if(LEVELDB_FOUND AND SNAPPY_FOUND)
+-  if(LEVELDB_FOUND AND SNAPPY_FOUND)
 -    include_directories(SYSTEM ${LevelDB_INCLUDE})
 -    list(APPEND Caffe2_DEPENDENCY_LIBS ${LevelDB_LIBRARIES})
 -    include_directories(SYSTEM ${Snappy_INCLUDE_DIR})
 -    list(APPEND Caffe2_DEPENDENCY_LIBS ${Snappy_LIBRARIES})
++  if(1)
 +    list(APPEND Caffe2_DEPENDENCY_LIBS CONAN_PKG::leveldb)
    else()
      message(WARNING "Not compiling with LevelDB. Suppress this warning with -DUSE_LEVELDB=OFF")
      caffe2_update_option(USE_LEVELDB OFF)
-@@ -773,10 +762,9 @@ endif()
+@@ -773,10 +761,9 @@ endif()
  # ---[ NUMA
  if(USE_NUMA)
    if(LINUX)
@@ -475,7 +475,7 @@ index 06464e799a..0b9008c42b 100644
      else()
        message(WARNING "Not compiling with NUMA. Suppress this warning with -DUSE_NUMA=OFF")
        caffe2_update_option(USE_NUMA OFF)
-@@ -789,10 +777,9 @@ endif()
+@@ -789,10 +776,9 @@ endif()
  
  # ---[ ZMQ
  if(USE_ZMQ)
@@ -488,7 +488,7 @@ index 06464e799a..0b9008c42b 100644
    else()
      message(WARNING "Not compiling with ZMQ. Suppress this warning with -DUSE_ZMQ=OFF")
      caffe2_update_option(USE_ZMQ OFF)
-@@ -801,10 +788,9 @@ endif()
+@@ -801,10 +787,9 @@ endif()
  
  # ---[ Redis
  if(USE_REDIS)
@@ -502,7 +502,7 @@ index 06464e799a..0b9008c42b 100644
    else()
      message(WARNING "Not compiling with Redis. Suppress this warning with -DUSE_REDIS=OFF")
      caffe2_update_option(USE_REDIS OFF)
-@@ -826,9 +812,9 @@ if(USE_OPENCV)
+@@ -826,9 +811,9 @@ if(USE_OPENCV)
    endif()
    if(OpenCV_FOUND)
      include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
@@ -514,7 +514,7 @@ index 06464e799a..0b9008c42b 100644
      endif()
      message(STATUS "OpenCV found (${OpenCV_CONFIG_PATH})")
    else()
-@@ -992,6 +978,7 @@ if(BUILD_PYTHON)
+@@ -992,6 +977,7 @@ if(BUILD_PYTHON)
  endif()
  
  # ---[ pybind11
@@ -522,7 +522,7 @@ index 06464e799a..0b9008c42b 100644
  if(NOT pybind11_PREFER_third_party)
    find_package(pybind11 CONFIG)
    if(NOT pybind11_FOUND)
-@@ -1013,6 +1000,7 @@ else()
+@@ -1013,6 +999,7 @@ else()
  endif()
  message(STATUS "pybind11 include dirs: " "${pybind11_INCLUDE_DIRS}")
  include_directories(SYSTEM ${pybind11_INCLUDE_DIRS})
@@ -530,7 +530,7 @@ index 06464e799a..0b9008c42b 100644
  
  # ---[ MPI
  if(USE_MPI)
-@@ -1023,8 +1011,7 @@ if(USE_MPI)
+@@ -1023,8 +1010,7 @@ if(USE_MPI)
      message(STATUS "MPI include path: " ${MPI_CXX_INCLUDE_PATH})
      message(STATUS "MPI LINK flags path: " ${MPI_CXX_LINK_FLAGS})
      message(STATUS "MPI libraries: " ${MPI_CXX_LIBRARIES})
@@ -540,7 +540,7 @@ index 06464e799a..0b9008c42b 100644
      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${MPI_CXX_LINK_FLAGS}")
      find_program(OMPI_INFO
        NAMES ompi_info
-@@ -1349,9 +1336,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
+@@ -1349,9 +1335,8 @@ if(USE_DISTRIBUTED AND USE_TENSORPIPE)
      set(TP_BUILD_LIBUV ON CACHE BOOL "" FORCE)
      set(TP_STATIC_OR_SHARED STATIC CACHE STRING "" FORCE)
  
@@ -551,7 +551,7 @@ index 06464e799a..0b9008c42b 100644
    endif()
  endif()
  
-@@ -1401,10 +1387,7 @@ if(NOT INTERN_BUILD_MOBILE AND BUILD_CAFFE2_OPS)
+@@ -1401,10 +1386,7 @@ if(NOT INTERN_BUILD_MOBILE AND BUILD_CAFFE2_OPS)
  endif()
  
  if(USE_ZSTD)
@@ -563,7 +563,7 @@ index 06464e799a..0b9008c42b 100644
  endif()
  
  # ---[ Onnx
-@@ -1431,7 +1414,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1431,7 +1413,6 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
    if(NOT USE_SYSTEM_ONNX)
      add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../third_party/onnx EXCLUDE_FROM_ALL)
    endif()
@@ -571,7 +571,7 @@ index 06464e799a..0b9008c42b 100644
  
    add_definitions(-DONNX_NAMESPACE=${ONNX_NAMESPACE})
    if(NOT USE_SYSTEM_ONNX)
-@@ -1445,23 +1427,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
+@@ -1445,23 +1426,11 @@ if(CAFFE2_CMAKE_BUILDING_WITH_MAIN_REPO AND NOT INTERN_DISABLE_ONNX)
      endif()
      list(APPEND Caffe2_DEPENDENCY_WHOLE_LINK_LIBS onnx_library)
    else()
@@ -597,7 +597,7 @@ index 06464e799a..0b9008c42b 100644
    # Recover the build shared libs option.
    set(BUILD_SHARED_LIBS ${TEMP_BUILD_SHARED_LIBS})
  endif()
-@@ -1661,8 +1631,9 @@ if(NOT INTERN_BUILD_MOBILE)
+@@ -1661,8 +1630,9 @@ if(NOT INTERN_BUILD_MOBILE)
        CACHE BOOL "Copy the required BLAS DLLs into the TH install dirs")
    endif()
  
@@ -609,7 +609,7 @@ index 06464e799a..0b9008c42b 100644
      set(USE_LAPACK 1)
      list(APPEND Caffe2_PRIVATE_DEPENDENCY_LIBS ${LAPACK_LIBRARIES})
    else()
-@@ -1776,7 +1747,6 @@ endif()
+@@ -1776,7 +1746,6 @@ endif()
  #
  set(TEMP_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libs" FORCE)
@@ -617,7 +617,7 @@ index 06464e799a..0b9008c42b 100644
  
  # Disable compiler feature checks for `fmt`.
  #
-@@ -1785,9 +1755,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
+@@ -1785,9 +1754,8 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/fmt)
  # CMAKE_CXX_FLAGS in ways that break feature checks. Since we already know
  # `fmt` is compatible with a superset of the compilers that PyTorch is, it
  # shouldn't be too bad to just disable the checks.
