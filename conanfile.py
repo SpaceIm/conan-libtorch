@@ -98,7 +98,7 @@ class LibtorchConan(ConanFile):
         "with_zstd": False,
         "with_mkldnn": False,
         "distributed": True,
-        "with_mpi": False, # TODO: should be True (link errors, package_info of openmpi recipe is likely broken)
+        "with_mpi": True,
         "with_gloo": False, # TODO: should be True
         "with_tensorpipe": True,
         "utilities": False,
@@ -537,14 +537,21 @@ class LibtorchConan(ConanFile):
         # torch_cpu
         # TODO: see what's in Caffe2_PUBLIC_DEPENDENCY_LIBS, Caffe2_DEPENDENCY_WHOLE_LINK_LIBS, Caffe2_DEPENDENCY_LIBS for torch_cpu depencencies
         _add_whole_archive_lib("libtorch_cpu", "torch_cpu", shared=self.options.shared)
-        self.cpp_info.components["libtorch_cpu"].requires.extend(
-            ["libtorch_c10", "cpuinfo::cpuinfo", "eigen::eigen", "foxi::foxi"] +
+        self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_c10")
+
+        # TODO: Eventually remove this workaround in the future
+        # We put all these external dependencies and system libs of torch_cpu in an empty component instead,
+        # due to "whole archive" trick. Indeed, with this trick, conan doesn't honor correct order
+        # per component (conan generators put exelinkerflags/sharedlinkflags after system libs and external libs)
+        self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_cpu_link_order_workaround")
+        self.cpp_info.components["libtorch_cpu_link_order_workaround"].requires.extend(
+            ["cpuinfo::cpuinfo", "eigen::eigen", "foxi::foxi"] +
             _openblas() + _onednn() + _sleef() + _leveldb() + _openmpi() + _gloo()
         )
         if self.settings.os == "Linux":
-            self.cpp_info.components["libtorch_cpu"].system_libs.extend(["dl", "m", "pthread", "rt"])
+            self.cpp_info.components["libtorch_cpu_link_order_workaround"].system_libs.extend(["dl", "m", "pthread", "rt"])
         if self.options.blas == "veclib":
-            self.cpp_info.components["libtorch_cpu"].frameworks.append("Accelerate")
+            self.cpp_info.components["libtorch_cpu_link_order_workaround"].frameworks.append("Accelerate")
 
         # c10
         self.cpp_info.components["libtorch_c10"].libs = ["c10"]
@@ -565,17 +572,20 @@ class LibtorchConan(ConanFile):
             _tbb() + _fbgemm() + _ffmpeg() +
             _nnpack() + _xnnpack() + _pthreadpool() +
             _opencl() + _opencv() + _redis() + _rocksdb() + _vulkan() + _shaderc() +
-            _zeromq() + _zstd() + _onednn() + _tensorpipe()
+            _zeromq() + _zstd() + _tensorpipe()
         )
         #------------------
 
         if self.options.shared:
-            self.cpp_info.components["libtorch_cpu"].requires.append("protobuf::protobuf")
+            # TODO: Eventually remove this workaround in the future
+            self.cpp_info.components["libtorch_cpu_link_order_workaround"].requires.append("protobuf::protobuf")
         else:
             # caffe2_protos
             _add_whole_archive_lib("libtorch_caffe2_protos", "caffe2_protos")
-            self.cpp_info.components["libtorch_caffe2_protos"].requires.append("protobuf::protobuf")
             self.cpp_info.components["libtorch_cpu"].requires.append("libtorch_caffe2_protos")
+            # TODO: Eventually remove this workaround in the future
+            self.cpp_info.components["libtorch_caffe2_protos"].requires.append("libtorch_caffe2_protos_link_order_workaround")
+            self.cpp_info.components["libtorch_caffe2_protos_link_order_workaround"].requires.append("protobuf::protobuf")
 
             # Caffe2_perfkernels_avx
             if _lib_exists("Caffe2_perfkernels_avx"):
