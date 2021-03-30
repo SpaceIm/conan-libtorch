@@ -171,6 +171,8 @@ class LibtorchConan(ConanFile):
             raise ConanInvalidConfiguration("libtorch video support with ffmpeg also requires opencv")
         if self.options.blas == "veclib" and not tools.is_apple_os(self.settings.os):
             raise ConanInvalidConfiguration("veclib only available on Apple family OS")
+        if self.settings.compiler == "clang" and not self.options.shared:
+            raise ConanInvalidConfiguration("clang can't consume libtorch static for the moment")
 
         if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
             self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
