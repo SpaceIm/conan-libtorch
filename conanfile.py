@@ -459,7 +459,7 @@ class LibtorchConan(ConanFile):
                     whole_archive = "-Wl,-force_load,{}".format(lib_fullpath)
                 elif self.settings.compiler == "Visual Studio":
                     lib_fullpath = os.path.join(lib_folder, "{}".format(libname))
-                    whole_archive = "\"/WHOLEARCHIVE:{}\"".format(lib_fullpath)
+                    whole_archive = "-WHOLEARCHIVE:{}".format(lib_fullpath)
                 else:
                     lib_fullpath = os.path.join(lib_folder, "lib{}.a".format(libname))
                     whole_archive = "-Wl,--whole-archive,{},--no-whole-archive".format(lib_fullpath)
