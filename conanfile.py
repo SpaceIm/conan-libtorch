@@ -411,7 +411,7 @@ class LibtorchConan(ConanFile):
     def package(self):
         self.copy("LICENSE", dst="licenses", src=self._source_subfolder)
         cmake = self._configure_cmake()
-        cmake.install() # FIXME: something is wrong with includes layout
+        cmake.install()
         # TODO: Keep share/Aten/Declarations.yml?
         tools.rmdir(os.path.join(self.package_folder, "share"))
         tools.remove_files_by_mask(os.path.join(self.package_folder, "bin"), "*.pdb")

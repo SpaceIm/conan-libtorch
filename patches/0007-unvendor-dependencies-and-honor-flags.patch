@@ -29,7 +29,7 @@ index ef677702ce..f2e594c81f 100644
    # Eigen fails to build with some versions, so convert this to a warning
    # Details at http://eigen.tuxfamily.org/bz/show_bug.cgi?id=1459
 diff --git a/aten/src/ATen/CMakeLists.txt b/aten/src/ATen/CMakeLists.txt
-index 486724d180..eb87a1a2d3 100644
+index b63b99acb2..6e2fa9ca28 100644
 --- a/aten/src/ATen/CMakeLists.txt
 +++ b/aten/src/ATen/CMakeLists.txt
 @@ -298,13 +298,6 @@ if(NOT MSVC AND NOT EMSCRIPTEN AND NOT INTERN_BUILD_MOBILE)

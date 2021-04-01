@@ -11,6 +11,19 @@ index 35974f5bd1..ef677702ce 100644
  
  # ---[ Main build
  add_subdirectory(c10)
+diff --git a/aten/src/ATen/CMakeLists.txt b/aten/src/ATen/CMakeLists.txt
+index 486724d180..b63b99acb2 100644
+--- a/aten/src/ATen/CMakeLists.txt
++++ b/aten/src/ATen/CMakeLists.txt
+@@ -419,7 +419,7 @@ endif()
+ # https://stackoverflow.com/questions/11096471/how-can-i-install-a-hierarchy-of-files-using-cmake
+ foreach(HEADER  ${INSTALL_HEADERS})
+   string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/" "ATen/" HEADER_SUB ${HEADER})
+-  string(REPLACE "${${CMAKE_PROJECT_NAME}_SOURCE_DIR}/" "" HEADER_SUB ${HEADER_SUB})
++  string(REPLACE "${Torch_SOURCE_DIR}/" "" HEADER_SUB ${HEADER_SUB})
+   get_filename_component(DIR ${HEADER_SUB} DIRECTORY)
+   install(FILES ${HEADER} DESTINATION "${AT_INSTALL_INCLUDE_DIR}/${DIR}")
+ endforeach()
 diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
 index 7bef849c08..43aa9de6f8 100644
 --- a/caffe2/CMakeLists.txt
