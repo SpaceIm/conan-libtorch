@@ -372,12 +372,8 @@ class LibtorchConan(ConanFile):
         self._cmake.definitions["MSVC_Z7_OVERRIDE"] = False
 
         # Custom variables for our CMake wrapper
-        self._cmake.definitions["CONAN_LIBTORCH_USE_PTHREADPOOL"] = self._use_nnpack_family
-        self._cmake.definitions["CONAN_LIBTORCH_USE_CPUINFO"] = True
-        self._cmake.definitions["CONAN_LIBTORCH_USE_FXDIV"] = self.options.with_xnnpack
-        self._cmake.definitions["CONAN_LIBTORCH_USE_PSIMD"] = self.options.with_xnnpack
-        self._cmake.definitions["CONAN_LIBTORCH_USE_FP16"] = self.options.with_xnnpack
         self._cmake.definitions["CONAN_LIBTORCH_USE_SLEEF"] = self._depends_on_sleef
+        self._cmake.definitions["CONAN_LIBTORCH_USE_PTHREADPOOL"] = self._use_nnpack_family
 
         self._cmake.configure(build_folder=self._build_subfolder)
         return self._cmake
