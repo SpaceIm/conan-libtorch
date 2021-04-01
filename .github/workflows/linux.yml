@@ -7,10 +7,6 @@ jobs:
       fail-fast: false
       matrix:
         compiler:
-        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "5",  versionForConan: "5",   buildType: "Debug"   }
-        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "5",  versionForConan: "5",   buildType: "Release" }
-        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "6",  versionForConan: "6",   buildType: "Debug"   }
-        - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "6",  versionForConan: "6",   buildType: "Release" }
         - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "7",  versionForConan: "7",   buildType: "Debug"   }
         - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "7",  versionForConan: "7",   buildType: "Release" }
         - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "8",  versionForConan: "8",   buildType: "Debug"   }
@@ -19,10 +15,6 @@ jobs:
         - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "9",  versionForConan: "9",   buildType: "Release" }
         - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "10", versionForConan: "10",  buildType: "Debug"   }
         - { name: "GCC",   cc: "gcc",   cxx: "g++",     version: "10", versionForConan: "10",  buildType: "Release" }
-        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "5",  versionForConan: "5.0", buildType: "Debug"   }
-        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "5",  versionForConan: "5.0", buildType: "Release" }
-        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "6",  versionForConan: "6.0", buildType: "Debug"   }
-        - { name: "CLANG", cc: "clang", cxx: "clang++", version: "6",  versionForConan: "6.0", buildType: "Release" }
         - { name: "CLANG", cc: "clang", cxx: "clang++", version: "7",  versionForConan: "7.0", buildType: "Debug"   }
         - { name: "CLANG", cc: "clang", cxx: "clang++", version: "7",  versionForConan: "7.0", buildType: "Release" }
         - { name: "CLANG", cc: "clang", cxx: "clang++", version: "8",  versionForConan: "8",   buildType: "Debug"   }
@@ -49,17 +41,17 @@ jobs:
           sudo add-apt-repository main
           sudo add-apt-repository universe
           sudo apt-get update
-          sudo apt-get install -y g++-${{ matrix.compiler.versionForConan }}
+          sudo apt-get install -y g++-${{ matrix.compiler.version }}
       - name: Install clang
         if: matrix.compiler.name == 'CLANG'
         run: |
           sudo add-apt-repository main
           sudo add-apt-repository universe
           sudo apt-get update
-          sudo apt-get install -y clang-${{ matrix.compiler.versionForConan }} \
-                                  lldb-${{ matrix.compiler.versionForConan }} \
-                                  lld-${{ matrix.compiler.versionForConan }} \
-                                  clang-format-${{ matrix.compiler.versionForConan }}
+          sudo apt-get install -y clang-${{ matrix.compiler.version }} \
+                                  lldb-${{ matrix.compiler.version }} \
+                                  lld-${{ matrix.compiler.version }} \
+                                  clang-format-${{ matrix.compiler.version }}
       - name: Run
         env:
           CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
