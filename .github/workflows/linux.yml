@@ -46,13 +46,15 @@ jobs:
       - name: Install gcc
         if: matrix.compiler.name == 'GCC'
         run: |
-          sudo add-apt-repository bionic main universe
+          sudo add-apt-repository main
+          sudo add-apt-repository universe
           sudo apt-get update
           sudo apt-get install -y g++-${{ matrix.compiler.versionForConan }}
       - name: Install clang
         if: matrix.compiler.name == 'CLANG'
         run: |
-          sudo add-apt-repository bionic main universe
+          sudo add-apt-repository main
+          sudo add-apt-repository universe
           sudo apt-get update
           sudo apt-get install -y clang-${{ matrix.compiler.versionForConan }} \
                                   lldb-${{ matrix.compiler.versionForConan }} \
