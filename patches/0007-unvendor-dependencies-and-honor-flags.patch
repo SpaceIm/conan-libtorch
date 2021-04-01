@@ -101,7 +101,7 @@ index a267af43d1..63382626fd 100644
    message(STATUS "don't use NUMA")
  endif()
 diff --git a/caffe2/CMakeLists.txt b/caffe2/CMakeLists.txt
-index 8eeb54e653..eacc2c71e7 100644
+index 8f5a013756..8b5e1d23f4 100644
 --- a/caffe2/CMakeLists.txt
 +++ b/caffe2/CMakeLists.txt
 @@ -98,7 +98,7 @@ endif()
