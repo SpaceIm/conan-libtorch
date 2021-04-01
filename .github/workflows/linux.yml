@@ -46,16 +46,18 @@ jobs:
       - name: Install gcc
         if: matrix.compiler.name == 'GCC'
         run: |
+          sudo add-apt-repository universe
           sudo apt-get update
-          sudo apt-get install -y g++-${{ matrix.compiler.version }}
+          sudo apt-get install -y g++-${{ matrix.compiler.versionForConan }}
       - name: Install clang
         if: matrix.compiler.name == 'CLANG'
         run: |
+          sudo add-apt-repository universe
           sudo apt-get update
-          sudo apt-get install -y clang-${{ matrix.compiler.version }} \
-                                  lldb-${{ matrix.compiler.version }} \
-                                  lld-${{ matrix.compiler.version }} \
-                                  clang-format-${{ matrix.compiler.version }}
+          sudo apt-get install -y clang-${{ matrix.compiler.versionForConan }} \
+                                  lldb-${{ matrix.compiler.versionForConan }} \
+                                  lld-${{ matrix.compiler.versionForConan }} \
+                                  clang-format-${{ matrix.compiler.versionForConan }}
       - name: Run
         env:
           CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
