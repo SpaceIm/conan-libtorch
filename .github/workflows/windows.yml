@@ -25,5 +25,8 @@ jobs:
         env:
           CONAN_BUILD_TYPES: ${{ matrix.config.buildType }}
           CONAN_VISUAL_VERSIONS: ${{ matrix.config.version }}
+          CONAN_CMAKE_GENERATOR: Ninja
+          CC: cl.exe
+          CXX: cl.exe
         run: |
           python build.py
