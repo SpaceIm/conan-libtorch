@@ -271,7 +271,7 @@ class LibtorchConan(ConanFile):
                                             "numa with libtorch:with_numa=False")
 
     def build_requirements(self):
-        if tools.cross_building(self):
+        if tools.cross_building(self.settings):
             self.build_requires("protobuf/3.15.5")
         if self.options.with_vulkan and not self.options.vulkan_shaderc_runtime:
             self.build_requires("shaderc/2019.0")
@@ -284,8 +284,8 @@ class LibtorchConan(ConanFile):
         # self.build_requires("cpython/3.9.1")
 
     def source(self):
-        tools.get(**self.conan_data["sources"][self.version])
-        os.rename("pytorch-" + self.version, self._source_subfolder)
+        tools.get(**self.conan_data["sources"][self.version],
+                  destination=self._source_subfolder, strip_root=True)
 
     def _configure_cmake(self):
         if self._cmake:
