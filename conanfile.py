@@ -271,6 +271,8 @@ class LibtorchConan(ConanFile):
                                             "numa with libtorch:with_numa=False")
 
     def build_requirements(self):
+        if tools.cross_building(self):
+            self.build_requires("protobuf/3.15.5")
         if self.options.with_vulkan and not self.options.vulkan_shaderc_runtime:
             self.build_requires("shaderc/2019.0")
         # FIXME: libtorch 1.8.0 requires:
