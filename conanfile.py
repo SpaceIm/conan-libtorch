@@ -185,15 +185,15 @@ class LibtorchConan(ConanFile):
 
     def requirements(self):
         self.requires("cpuinfo/cci.20201217")
-        self.requires("eigen/3.3.9")
-        self.requires("fmt/7.1.3")
+        self.requires("eigen/3.4.0")
+        self.requires("fmt/8.0.1")
         self.requires("foxi/cci.20210217")
-        self.requires("onnx/1.8.1")
-        self.requires("protobuf/3.15.5")
+        self.requires("onnx/1.10.2")
+        self.requires("protobuf/3.17.1")
         if self._depends_on_sleef:
             self.requires("sleef/3.5.1")
         if self.options.blas == "openblas":
-            self.requires("openblas/0.3.13")
+            self.requires("openblas/0.3.17")
         elif self.options.blas in ["atlas", "mkl", "flame"]:
             raise ConanInvalidConfiguration("{} recipe not yet available in CCI".format(self.options.blas))
         if self.options.aten_parallel_backend == "tbb":
@@ -216,9 +216,9 @@ class LibtorchConan(ConanFile):
         if self.options.with_gflags:
             self.requires("gflags/2.2.2")
         if self.options.with_glog:
-            self.requires("glog/0.4.0")
+            self.requires("glog/0.5.0")
         if self.options.with_leveldb:
-            self.requires("leveldb/1.22")
+            self.requires("leveldb/1.23")
         if self.options.with_lmdb:
             # should be part of OpenLDAP or packaged separately?
             raise ConanInvalidConfiguration("lmdb recipe not yet available in CCI")
@@ -229,7 +229,7 @@ class LibtorchConan(ConanFile):
             self.requires("fxdiv/cci.20200417")
             self.requires("psimd/cci.20200517")
         if self.options.with_xnnpack:
-            self.requires("xnnpack/cci.20210310")
+            self.requires("xnnpack/cci.20211026")
         if self.options.get_safe("with_nnpack") or self.options.get_safe("with_qnnpack") or self.options.with_xnnpack:
             self.requires("pthreadpool/cci.20210218")
         if self.options.get_safe("with_numa"):
@@ -238,20 +238,20 @@ class LibtorchConan(ConanFile):
             self.requires("opencl-headers/2020.06.16")
             self.requires("opencl-icd-loader/2020.06.16")
         if self.options.with_opencv:
-            self.requires("opencv/4.5.1")
+            self.requires("opencv/4.5.3")
         if self.options.with_redis:
-            self.requires("hiredis/1.0.0")
+            self.requires("hiredis/1.0.2")
         if self.options.with_rocksdb:
-            self.requires("rocksdb/6.10.2")
+            self.requires("rocksdb/6.20.3")
         if self.options.with_vulkan:
-            self.requires("vulkan-headers/1.2.170.0")
-            self.requires("vulkan-loader/1.2.170.0")
+            self.requires("vulkan-headers/1.2.198.0")
+            self.requires("vulkan-loader/1.2.198.0")
         if self.options.get_safe("vulkan_shaderc_runtime"):
-            self.requires("shaderc/2019.0")
+            self.requires("shaderc/2021.1")
         if self.options.with_zmq:
             self.requires("zeromq/4.3.4")
         if self.options.with_zstd:
-            self.requires("zstd/1.4.9")
+            self.requires("zstd/1.5.1")
         if self.options.with_mkldnn:
             raise ConanInvalidConfiguration("oneDNN (MKL-DNN) recipe not yet available in CCI")
         if self.options.get_safe("with_mpi"):
@@ -272,9 +272,9 @@ class LibtorchConan(ConanFile):
 
     def build_requirements(self):
         if tools.cross_building(self.settings):
-            self.build_requires("protobuf/3.15.5")
+            self.build_requires("protobuf/3.17.1")
         if self.options.with_vulkan and not self.options.vulkan_shaderc_runtime:
-            self.build_requires("shaderc/2019.0")
+            self.build_requires("shaderc/2021.1")
         # FIXME: libtorch 1.8.0 requires:
         #  - python 3.6.2+ with pyyaml, dataclasses and typing_extensions libs
         #  or
