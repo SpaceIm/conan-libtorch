@@ -176,7 +176,7 @@ class LibtorchConan(ConanFile):
         self.requires("eigen/3.4.0")
         self.requires("fmt/8.0.1")
         self.requires("foxi/cci.20210217")
-        self.requires("onnx/1.10.2")
+        self.requires("onnx/1.8.1")
         self.requires("protobuf/3.17.1")
         if self._depends_on_sleef:
             self.requires("sleef/3.5.1")
