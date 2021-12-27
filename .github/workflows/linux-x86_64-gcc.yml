@@ -1,0 +1,46 @@
+name: Linux x86_64 GCC
+on: [push, pull_request]
+
+jobs:
+  splitByBuildTypesTrue:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - { version: "4.9", dockerimage: "conanio/gcc49", buildType: "Debug"   }
+          - { version: "4.9", dockerimage: "conanio/gcc49", buildType: "Release" }
+          - { version: "5",   dockerimage: "conanio/gcc5",  buildType: "Debug"   }
+          - { version: "5",   dockerimage: "conanio/gcc5",  buildType: "Release" }
+          - { version: "6",   dockerimage: "conanio/gcc6",  buildType: "Debug"   }
+          - { version: "6",   dockerimage: "conanio/gcc6",  buildType: "Release" }
+          - { version: "7",   dockerimage: "conanio/gcc7",  buildType: "Debug"   }
+          - { version: "7",   dockerimage: "conanio/gcc7",  buildType: "Release" }
+          - { version: "8",   dockerimage: "conanio/gcc8",  buildType: "Debug"   }
+          - { version: "8",   dockerimage: "conanio/gcc8",  buildType: "Release" }
+          - { version: "9",   dockerimage: "conanio/gcc9",  buildType: "Debug"   }
+          - { version: "9",   dockerimage: "conanio/gcc9",  buildType: "Release" }
+          - { version: "10",  dockerimage: "conanio/gcc10", buildType: "Debug"   }
+          - { version: "10",  dockerimage: "conanio/gcc10", buildType: "Release" }
+          - { version: "11",  dockerimage: "conanio/gcc11", buildType: "Debug"   }
+          - { version: "11",  dockerimage: "conanio/gcc11", buildType: "Release" }
+    name: GCC ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ">=3.9.2"
+      - name: Install Conan
+        run: |
+          pip install conan_package_tools
+          conan user
+      - name: Run
+        env:
+          CONAN_SYSREQUIRES_MODE: enabled
+          CONAN_ARCHS: x86_64
+          CONAN_GCC_VERSIONS: ${{ matrix.compiler.version }}
+          CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
+          CONAN_USE_DOCKER: 1
+          CONAN_DOCKER_IMAGE: ${{ matrix.compiler.dockerimage }}
+        run: |
+          python build.py

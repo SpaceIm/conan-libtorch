@@ -1,0 +1,34 @@
+name: Windows x86_64 Visual Studio
+on: [push, pull_request]
+
+jobs:
+  splitByBuildTypesTrue:
+    runs-on: ${{ matrix.config.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { image: windows-2016, version: "15", buildType: "Debug"   }
+          - { image: windows-2016, version: "15", buildType: "Release" }
+          - { image: windows-2019, version: "16", buildType: "Debug"   }
+          - { image: windows-2019, version: "16", buildType: "Release" }
+    name: VISUAL ${{ matrix.config.version }} ${{ matrix.config.buildType }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ">=3.9.2"
+      - name: Install Conan
+        run: |
+          pip install conan_package_tools
+          conan user
+      - name: Run
+        env:
+          CONAN_ARCHS: x86_64
+          CONAN_VISUAL_VERSIONS: ${{ matrix.config.version }}
+          CONAN_BUILD_TYPES: ${{ matrix.config.buildType }}
+          CONAN_CMAKE_GENERATOR: Ninja
+          CC: cl.exe
+          CXX: cl.exe
+        run: |
+          python build.py

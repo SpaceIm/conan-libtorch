@@ -1,0 +1,38 @@
+name: macOS x86_64 Apple clang
+on: [push, pull_request]
+
+jobs:
+  splitByBuildTypesTrue:
+    runs-on: ${{ matrix.config.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { image: macos-10.15, version: "10.3",   versionForConan: "10.0", buildType: "Debug"   }
+          - { image: macos-10.15, version: "10.3",   versionForConan: "10.0", buildType: "Release" }
+          - { image: macos-11,    version: "11.7",   versionForConan: "11.0", buildType: "Debug"   }
+          - { image: macos-11,    version: "11.7",   versionForConan: "11.0", buildType: "Release" }
+          - { image: macos-11,    version: "12.5.1", versionForConan: "12.0", buildType: "Debug"   }
+          - { image: macos-11,    version: "12.5.1", versionForConan: "12.0", buildType: "Release" }
+          - { image: macos-11,    version: "13.0",   versionForConan: "13.0", buildType: "Debug"   }
+          - { image: macos-11,    version: "13.0",   versionForConan: "13.0", buildType: "Release" }
+    name: APPLE_CLANG ${{ matrix.config.version }} ${{ matrix.config.buildType }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ">=3.9.2"
+      - uses: maxim-lobanov/setup-xcode@v1.4.0
+        with:
+          xcode-version: ${{ matrix.config.version }}
+      - name: Install Conan
+        run: |
+          pip install conan_package_tools
+          conan user
+      - name: Run
+        env:
+          CONAN_ARCHS: x86_64
+          CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.config.versionForConan }}
+          CONAN_BUILD_TYPES: ${{ matrix.config.buildType }}
+        run: |
+          python build.py

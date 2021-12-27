@@ -1,0 +1,48 @@
+name: Linux x86_64 Clang
+on: [push, pull_request]
+
+jobs:
+  splitByBuildTypesTrue:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - { version: "3.9", dockerimage: "conanio/clang39", buildType: "Debug"   }
+          - { version: "3.9", dockerimage: "conanio/clang39", buildType: "Release" }
+          - { version: "4.0", dockerimage: "conanio/clang40", buildType: "Debug"   }
+          - { version: "4.0", dockerimage: "conanio/clang40", buildType: "Release" }
+          - { version: "5.0", dockerimage: "conanio/clang50", buildType: "Debug"   }
+          - { version: "5.0", dockerimage: "conanio/clang50", buildType: "Release" }
+          - { version: "6.0", dockerimage: "conanio/clang60", buildType: "Debug"   }
+          - { version: "6.0", dockerimage: "conanio/clang60", buildType: "Release" }
+          - { version: "7.0", dockerimage: "conanio/clang70", buildType: "Debug"   }
+          - { version: "7.0", dockerimage: "conanio/clang70", buildType: "Release" }
+          - { version: "8",   dockerimage: "conanio/clang8",  buildType: "Debug"   }
+          - { version: "8",   dockerimage: "conanio/clang8",  buildType: "Release" }
+          - { version: "9",   dockerimage: "conanio/clang9",  buildType: "Debug"   }
+          - { version: "9",   dockerimage: "conanio/clang9",  buildType: "Release" }
+          - { version: "10",  dockerimage: "conanio/clang10", buildType: "Debug"   }
+          - { version: "10",  dockerimage: "conanio/clang10", buildType: "Release" }
+          - { version: "11",  dockerimage: "conanio/clang11", buildType: "Debug"   }
+          - { version: "11",  dockerimage: "conanio/clang11", buildType: "Release" }
+    name: CLANG ${{ matrix.compiler.version }} ${{ matrix.compiler.buildType }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ">=3.9.2"
+      - name: Install Conan
+        run: |
+          pip install conan_package_tools
+          conan user
+      - name: Run
+        env:
+          CONAN_SYSREQUIRES_MODE: enabled
+          CONAN_ARCHS: x86_64
+          CONAN_CLANG_VERSIONS: ${{ matrix.compiler.version }}
+          CONAN_BUILD_TYPES: ${{ matrix.compiler.buildType }}
+          CONAN_USE_DOCKER: 1
+          CONAN_DOCKER_IMAGE: ${{ matrix.compiler.dockerimage }}
+        run: |
+          python build.py
