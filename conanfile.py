@@ -4,15 +4,14 @@ import glob
 import os
 import textwrap
 
-required_conan_version = ">=1.33.0"
+required_conan_version = ">=1.43.0"
 
 
 class LibtorchConan(ConanFile):
     name = "libtorch"
     description = "Tensors and Dynamic neural networks with strong GPU acceleration."
     license = "BSD-3-Clause"
-    topics = ("conan", "libtorch", "pytorch", "machine-learning",
-              "deep-learning", "neural-network", "gpu", "tensor")
+    topics = ("libtorch", "pytorch", "machine-learning", "deep-learning", "neural-network", "gpu", "tensor")
     homepage = "https://pytorch.org"
     url = "https://github.com/conan-io/conan-center-index"
 
@@ -107,8 +106,6 @@ class LibtorchConan(ConanFile):
     }
 
     short_paths = True
-
-    exports_sources = ["CMakeLists.txt", "patches/**"]
     generators = "cmake", "cmake_find_package", "cmake_find_package_multi"
     _cmake = None
 
@@ -119,6 +116,11 @@ class LibtorchConan(ConanFile):
     @property
     def _build_subfolder(self):
         return "build_subfolder"
+
+    def export_sources(self):
+        self.copy("CMakeLists.txt")
+        for patch in self.conan_data.get("patches", {}).get(self.version, []):
+            self.copy(patch["patch_file"])
 
     def config_options(self):
         # Change default options for several OS
@@ -162,20 +164,6 @@ class LibtorchConan(ConanFile):
             del self.options.with_mpi
             del self.options.with_gloo
             del self.options.with_tensorpipe
-
-        if self.settings.compiler.get_safe("cppstd"):
-            tools.check_min_cppstd(self, 14)
-        if self.options.with_cuda and self.options.with_rocm:
-            raise ConanInvalidConfiguration("libtorch doesn't yet support simultaneously building with CUDA and ROCm")
-        if self.options.with_ffmpeg and not self.options.with_opencv:
-            raise ConanInvalidConfiguration("libtorch video support with ffmpeg also requires opencv")
-        if self.options.blas == "veclib" and not tools.is_apple_os(self.settings.os):
-            raise ConanInvalidConfiguration("veclib only available on Apple family OS")
-        if self.settings.os == "Linux" and self.settings.compiler == "clang" and self.settings.compiler.libcxx == "libc++":
-            raise ConanInvalidConfiguration("clang with libc++ can't build libtorch") # TODO: try to fix that
-
-        if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
-            self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
 
         # numa static can't be linked into shared libs.
         # Because Caffe2_detectron_ops* libs are always shared, we have to force
@@ -266,12 +254,24 @@ class LibtorchConan(ConanFile):
         return self.settings.compiler != "Visual Studio" and self.settings.os not in ["Android", "iOS"]
 
     def validate(self):
+        if self.settings.compiler.get_safe("cppstd"):
+            tools.check_min_cppstd(self, 14)
+        if self.options.with_cuda and self.options.with_rocm:
+            raise ConanInvalidConfiguration("libtorch doesn't yet support simultaneously building with CUDA and ROCm")
+        if self.options.with_ffmpeg and not self.options.with_opencv:
+            raise ConanInvalidConfiguration("libtorch video support with ffmpeg also requires opencv")
+        if self.options.blas == "veclib" and not tools.is_apple_os(self.settings.os):
+            raise ConanInvalidConfiguration("veclib only available on Apple family OS")
+        if self.settings.os == "Linux" and self.settings.compiler == "clang" and self.settings.compiler.libcxx == "libc++":
+            raise ConanInvalidConfiguration("clang with libc++ can't build libtorch") # TODO: try to fix that
+        if self.options.distributed and self.settings.os not in ["Linux", "Windows"]:
+            self.output.warn("Distributed libtorch is not tested on {} and likely won't work".format(str(self.settings.os)))
         if self.options.get_safe("with_numa") and not self.options["libnuma"].shared:
             raise ConanInvalidConfiguration("libtorch requires libnuma shared. Set libnuma:shared=True, or disable " \
                                             "numa with libtorch:with_numa=False")
 
     def build_requirements(self):
-        if tools.cross_building(self.settings):
+        if hasattr(self, "settings_build"):
             self.build_requires("protobuf/3.17.1")
         if self.options.with_vulkan and not self.options.vulkan_shaderc_runtime:
             self.build_requires("shaderc/2021.1")
@@ -414,7 +414,7 @@ class LibtorchConan(ConanFile):
         tools.rmdir(os.path.join(self.package_folder, "share"))
         tools.remove_files_by_mask(os.path.join(self.package_folder, "bin"), "*.pdb")
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_subfolder, self._module_file)
+            os.path.join(self.package_folder, self._module_file_rel_path)
         )
 
     @staticmethod
@@ -437,10 +437,14 @@ class LibtorchConan(ConanFile):
         return os.path.join("lib", "cmake")
 
     @property
-    def _module_file(self):
-        return "conan-official-{}-variables.cmake".format(self.name)
+    def _module_file_rel_path(self):
+        return os.path.join(self._module_subfolder,
+                            "conan-official-{}-variables.cmake".format(self.name))
 
     def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "Torch")
+        self.cpp_info.set_property("cmake_target_name", "Torch::Torch")
+
         self.cpp_info.names["cmake_find_package"] = "Torch"
         self.cpp_info.names["cmake_find_package_multi"] = "Torch"
 
@@ -568,8 +572,9 @@ class LibtorchConan(ConanFile):
         ##------------------
         ## FIXME: let's put all build modules, include dirs, external dependencies (except protobuf) and system/frameworks libs in c10 for the moment
         self.cpp_info.components["libtorch_c10"].builddirs.append(self._module_subfolder)
-        self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package"] = [os.path.join(self._module_subfolder, self._module_file)]
-        self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [os.path.join(self._module_subfolder, self._module_file)]
+        self.cpp_info.components["libtorch_c10"].set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
+        self.cpp_info.components["libtorch_c10"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
         self.cpp_info.components["libtorch_c10"].includedirs.append(os.path.join("include", "torch", "csrc", "api", "include"))
         self.cpp_info.components["libtorch_c10"].requires.extend(["fmt::fmt", "onnx::onnx"])
         self.cpp_info.components["libtorch_c10"].requires.extend(
